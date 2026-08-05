@@ -1,0 +1,1 @@
+# Eventos implementados (según el catálogo)

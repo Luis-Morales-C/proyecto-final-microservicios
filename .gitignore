@@ -1,0 +1,38 @@
+# Variables de entorno
+.env
+.env.*
+
+!.env.example
+
+# Secretos
+secrets/
+
+# Java / Maven
+target/
+*.class
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Go
+bin/
+
+# Logs
+*.log
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
