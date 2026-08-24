@@ -1,4 +1,7 @@
 package co.edu.uniquindio.gestionempleados.model;
 
-public class EstadoEmpleado {
+public enum EstadoEmpleado {
+    ACTIVO,
+    EN_VACACIONES,
+    RETIRADO
 }
