@@ -7,6 +7,8 @@ import co.edu.uniquindio.gestionempleados.model.EstadoEmpleado;
 import co.edu.uniquindio.gestionempleados.repository.EmpleadoRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class EmpleadoService {
 
@@ -24,13 +26,20 @@ public class EmpleadoService {
             throw new EmpleadoDuplicadoException("El número de empleado " + empleado.numeroEmpleado() + " ya está registrado");
         }
 
-        // En este reto solo se maneja ACTIVO; si no viene, se asigna por defecto
-        Empleado empleadoFinal = empleado.estado() == null
-                ? new Empleado(
-                empleado.id(), empleado.nombre(), empleado.apellido(), empleado.email(),
-                empleado.numeroEmpleado(), empleado.cargo(), empleado.area(),
-                empleado.departamentoId(), empleado.fechaIngreso(), EstadoEmpleado.ACTIVO)
-                : empleado;
+        String idFinal = UUID.randomUUID().toString();
+
+        Empleado empleadoFinal = new Empleado(
+                idFinal,
+                empleado.nombre(),
+                empleado.apellido(),
+                empleado.email(),
+                empleado.numeroEmpleado(),
+                empleado.cargo(),
+                empleado.area(),
+                empleado.departamentoId(),
+                empleado.fechaIngreso(),
+                empleado.estado() == null ? EstadoEmpleado.ACTIVO : empleado.estado()
+        );
 
         return repository.save(empleadoFinal);
     }
