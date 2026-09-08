@@ -7,8 +7,6 @@ import co.edu.uniquindio.gestionempleados.model.EstadoEmpleado;
 import co.edu.uniquindio.gestionempleados.repository.EmpleadoRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
-
 @Service
 public class EmpleadoService {
 
@@ -19,26 +17,32 @@ public class EmpleadoService {
     }
 
     public Empleado registrar(Empleado empleado) {
-        if (repository.existsByEmail(empleado.email())) {
-            throw new EmpleadoDuplicadoException("El email " + empleado.email() + " ya está registrado");
-        }
-        if (repository.existsByNumeroEmpleado(empleado.numeroEmpleado())) {
-            throw new EmpleadoDuplicadoException("El número de empleado " + empleado.numeroEmpleado() + " ya está registrado");
+
+        if (repository.existsByEmailIgnoreCase(empleado.getEmail())) {
+            throw new EmpleadoDuplicadoException(
+                    "El email " + empleado.getEmail() + " ya está registrado"
+            );
         }
 
-        String idFinal = UUID.randomUUID().toString();
+        if (repository.existsByNumeroEmpleadoIgnoreCase(empleado.getNumeroEmpleado())) {
+            throw new EmpleadoDuplicadoException(
+                    "El número de empleado " + empleado.getNumeroEmpleado() + " ya está registrado"
+            );
+        }
 
         Empleado empleadoFinal = new Empleado(
-                idFinal,
-                empleado.nombre(),
-                empleado.apellido(),
-                empleado.email(),
-                empleado.numeroEmpleado(),
-                empleado.cargo(),
-                empleado.area(),
-                empleado.departamentoId(),
-                empleado.fechaIngreso(),
-                empleado.estado() == null ? EstadoEmpleado.ACTIVO : empleado.estado()
+                empleado.getId(),
+                empleado.getNombre(),
+                empleado.getApellido(),
+                empleado.getEmail(),
+                empleado.getNumeroEmpleado(),
+                empleado.getCargo(),
+                empleado.getArea(),
+                empleado.getDepartamentoId(),
+                empleado.getFechaIngreso(),
+                empleado.getEstado() == null
+                        ? EstadoEmpleado.ACTIVO
+                        : empleado.getEstado()
         );
 
         return repository.save(empleadoFinal);
