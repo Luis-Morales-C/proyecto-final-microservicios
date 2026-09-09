@@ -1,31 +1,31 @@
-from pydantic import BaseModel, Field, field_validator
 import re
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DepartamentoBase(BaseModel):
-
     nombre: str = Field(
         ...,
         min_length=1,
         max_length=100,
-        description="Nombre del departamento"
+        description="Nombre del departamento",
+        examples=["Tecnología"]
     )
 
     descripcion: str = Field(
         ...,
         min_length=1,
         max_length=255,
-        description="Descripción del departamento"
+        description="Descripción del departamento",
+        examples=["Departamento encargado de tecnología"]
     )
 
     @field_validator("nombre")
     @classmethod
-    def validar_nombre(cls, valor):
+    def validar_nombre(cls, valor: str) -> str:
 
         if not valor.strip():
-            raise ValueError(
-                "El nombre no puede estar vacío"
-            )
+            raise ValueError("El nombre no puede estar vacío")
 
         if valor != valor.strip():
             raise ValueError(
@@ -38,8 +38,8 @@ class DepartamentoBase(BaseModel):
             )
 
         if not re.fullmatch(
-                r"[A-Za-zÁÉÍÓÚáéíóúÑñÜü]+(?:[ -][A-Za-zÁÉÍÓÚáéíóúÑñÜü]+)*",
-                valor
+            r"[A-Za-zÁÉÍÓÚáéíóúÑñÜü]+(?:[ -][A-Za-zÁÉÍÓÚáéíóúÑñÜü]+)*",
+            valor
         ):
             raise ValueError(
                 "El nombre solo puede contener letras, espacios y guiones"
@@ -49,7 +49,7 @@ class DepartamentoBase(BaseModel):
 
     @field_validator("descripcion")
     @classmethod
-    def validar_descripcion(cls, valor):
+    def validar_descripcion(cls, valor: str) -> str:
 
         if not valor.strip():
             raise ValueError(
@@ -75,12 +75,13 @@ class DepartamentoCreate(DepartamentoBase):
         ...,
         min_length=1,
         max_length=20,
-        description="Identificador único del departamento"
+        description="Identificador único del departamento",
+        examples=["IT"]
     )
 
     @field_validator("id")
     @classmethod
-    def validar_id(cls, valor):
+    def validar_id(cls, valor: str) -> str:
 
         if not valor.strip():
             raise ValueError(
@@ -107,7 +108,12 @@ class DepartamentoCreate(DepartamentoBase):
 
 class DepartamentoResponse(DepartamentoBase):
 
-    id: str
+    id: str = Field(
+        ...,
+        description="Identificador único del departamento",
+        examples=["IT"]
+    )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True
+    )

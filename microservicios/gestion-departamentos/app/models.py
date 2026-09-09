@@ -4,8 +4,22 @@ from app.database import Base
 
 
 class Departamento(Base):
+
     __tablename__ = "departamentos"
 
-    id = Column(String, primary_key=True, index=True)
-    nombre = Column(String, nullable=False)
-    descripcion = Column(String, nullable=False)
+    id = Column(
+        String(20),
+        primary_key=True,
+        index=True,
+        nullable=False
+    )
+
+    nombre = Column(
+        String(100),
+        nullable=False
+    )
+
+    descripcion = Column(
+        String(255),
+        nullable=False
+    )
