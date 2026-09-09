@@ -4,8 +4,11 @@ import co.edu.uniquindio.gestionempleados.dto.MensajeDTO;
 import co.edu.uniquindio.gestionempleados.model.Empleado;
 import co.edu.uniquindio.gestionempleados.service.EmpleadoService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/empleados")
@@ -23,9 +26,8 @@ public class EmpleadoController {
 
         Empleado creado = service.registrar(empleado);
 
-        return ResponseEntity.ok(
-                new MensajeDTO<>(false, creado)
-        );
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new MensajeDTO<>(false, creado));
     }
 
     @GetMapping("/{id}")
@@ -34,6 +36,14 @@ public class EmpleadoController {
 
         return ResponseEntity.ok(
                 new MensajeDTO<>(false, service.consultar(id))
+        );
+    }
+
+    @GetMapping
+    public ResponseEntity<MensajeDTO<List<Empleado>>> consultarTodos() {
+
+        return ResponseEntity.ok(
+                new MensajeDTO<>(false, service.consultarTodos())
         );
     }
 }

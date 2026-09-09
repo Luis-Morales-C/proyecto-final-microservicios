@@ -16,6 +16,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - microservices-network
+
 
   gestion-empleados:
     build:
@@ -29,9 +32,71 @@ services:
       DB_NAME: gestion_empleados
       DB_USER: postgres
       DB_PASSWORD: postgres
+      DEPARTAMENTOS_URL: http://gestion-departamentos:8000
     depends_on:
       database-empleados:
         condition: service_healthy
+      gestion-departamentos:
+        condition: service_healthy
+    networks:
+      - microservices-network
+
+
+  database-departamentos:
+    image: postgres:18
+    container_name: database-departamentos
+    environment:
+      POSTGRES_DB: gestion_departamentos
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - departamentos-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gestion_departamentos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - microservices-network
+
+
+  gestion-departamentos:
+    build:
+      context: ./microservicios/gestion-departamentos
+    container_name: gestion-departamentos
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: database-departamentos
+      DB_PORT: 5432
+      DB_NAME: gestion_departamentos
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/departamentos')"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    depends_on:
+      database-departamentos:
+        condition: service_healthy
+    networks:
+      - microservices-network
+
 
 volumes:
   empleados-db-data:
+  departamentos-db-data:
+
+
+networks:
+  microservices-network:

@@ -72,4 +72,20 @@ public class GlobalExceptionHandler {
                         "Ocurrió un error inesperado: " + ex.getMessage()
                 ));
     }
+
+    @ExceptionHandler(DepartamentoNoEncontradoException.class)
+    public ResponseEntity<MensajeDTO<String>> handleDepartamentoNoEncontrado(
+            DepartamentoNoEncontradoException ex) {
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new MensajeDTO<>(true, ex.getMessage()));
+    }
+
+    @ExceptionHandler(DepartamentoNoDisponibleException.class)
+    public ResponseEntity<MensajeDTO<String>> handleDepartamentoNoDisponible(
+            DepartamentoNoDisponibleException ex) {
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new MensajeDTO<>(true, ex.getMessage()));
+    }
 }

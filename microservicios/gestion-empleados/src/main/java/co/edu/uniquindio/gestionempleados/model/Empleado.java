@@ -1,5 +1,6 @@
 package co.edu.uniquindio.gestionempleados.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -22,6 +23,7 @@ public class Empleado {
 
         @NotBlank(message = "El email es obligatorio")
         @Email(message = "El email debe tener un formato válido")
+        @Column(unique = true)
         private String email;
 
         @NotBlank(message = "El número de empleado es obligatorio")
@@ -29,6 +31,7 @@ public class Empleado {
                 regexp = "^[A-Z0-9-]+$",
                 message = "El número de empleado solo puede contener letras mayúsculas, números y guiones"
         )
+        @Column(unique = true)
         private String numeroEmpleado;
 
         @NotBlank(message = "El cargo es obligatorio")
