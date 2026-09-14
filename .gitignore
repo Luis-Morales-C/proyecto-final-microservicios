@@ -1,8 +1,5 @@
 # Variables de entorno
 .env
-.env.*
-
-!.env.example
 
 # Secretos
 secrets/

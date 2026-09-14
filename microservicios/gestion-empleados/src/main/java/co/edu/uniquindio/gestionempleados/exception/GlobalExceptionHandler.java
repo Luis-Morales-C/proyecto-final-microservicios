@@ -269,6 +269,8 @@ public class GlobalExceptionHandler {
             org.springframework.dao.DataAccessException ex
     ) {
 
+        ex.printStackTrace();
+
         return ResponseEntity
                 .status(
                         HttpStatus.SERVICE_UNAVAILABLE

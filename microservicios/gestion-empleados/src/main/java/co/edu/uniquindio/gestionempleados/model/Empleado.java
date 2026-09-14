@@ -103,7 +103,7 @@ public class Empleado {
                 description = "Estado del empleado. En Reto 2 siempre es ACTIVO",
                 example = "ACTIVO"
         )
-        private EstadoEmpleado estado;
+        private EstadoEmpleado estado = EstadoEmpleado.ACTIVO;
 
         public Empleado() {
         }
@@ -129,8 +129,9 @@ public class Empleado {
                 this.area = area;
                 this.departamentoId = departamentoId;
                 this.fechaIngreso = fechaIngreso;
-                this.estado = estado;
-        }
+                this.estado = estado != null
+                        ? estado
+                        : EstadoEmpleado.ACTIVO;        }
 
         public String getId() {
                 return id;

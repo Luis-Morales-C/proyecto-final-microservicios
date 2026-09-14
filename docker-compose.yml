@@ -4,15 +4,15 @@ services:
     image: postgres:18
     container_name: database-empleados
     environment:
-      POSTGRES_DB: gestion_empleados
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${EMPLEADOS_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5433:5432"
+      - "${EMPLEADOS_DB_PORT}:5432"
     volumes:
       - empleados-db-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d gestion_empleados"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${EMPLEADOS_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -29,10 +29,10 @@ services:
     environment:
       DB_HOST: database-empleados
       DB_PORT: 5432
-      DB_NAME: gestion_empleados
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DEPARTAMENTOS_URL: http://gestion-departamentos:8000
+      DB_NAME: ${EMPLEADOS_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DEPARTAMENTOS_URL: ${DEPARTAMENTOS_URL}
     depends_on:
       database-empleados:
         condition: service_healthy
@@ -46,15 +46,15 @@ services:
     image: postgres:18
     container_name: database-departamentos
     environment:
-      POSTGRES_DB: gestion_departamentos
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${DEPARTAMENTOS_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5434:5432"
+      - "${DEPARTAMENTOS_DB_PORT}:5432"
     volumes:
       - departamentos-db-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d gestion_departamentos"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${DEPARTAMENTOS_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -71,9 +71,9 @@ services:
     environment:
       DB_HOST: database-departamentos
       DB_PORT: 5432
-      DB_NAME: gestion_departamentos
-      DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_NAME: ${DEPARTAMENTOS_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
       test:
         [
