@@ -144,8 +144,6 @@ La salida permite comprobar que los servicios que funcionan como dependencias se
 
 Esto evidencia el arranque ordenado de los servicios y la verificación de disponibilidad mediante los `healthcheck` configurados en Docker Compose.
 
-**Evidencia:** colocar aquí la captura real de `docker compose ps`.
-
 **Ruta de la evidencia:**
 
 ```text
@@ -357,16 +355,6 @@ R1-07-docker.png
 docs/evidencias/reto2/
 ```
 
-La estructura recomendada es:
-
-```text
-docs/evidencias/reto2/
-├── docker/
-├── postman/
-├── swagger/
-└── integracion/
-```
-
 
 ## Estado al finalizar el Reto 2
 
@@ -391,4 +379,96 @@ El Reto 2 deja implementados:
 - Dockerfile por servicio.
 - Despliegue mediante `docker compose up --build`.
 
-Las funcionalidades que la consigna reserva para retos posteriores, como PUT, DELETE, eventos, Circuit Breaker y los demás microservicios, permanecen pendientes y no se presentan como implementadas en el Reto 2.
+## Decisiones técnicas
+
+En el desarrollo del Reto 2 se tomaron tres decisiones técnicas principales. 
+
+### 1. Motor de base de datos por servicio
+
+Se decidió utilizar **PostgreSQL como motor de base de datos para ambos microservicios**, manteniendo una base de datos independiente para cada servicio.
+
+- `gestion-empleados` utiliza la base de datos `gestion_empleados`.
+- `gestion-departamentos` utiliza la base de datos `gestion_departamentos`.
+
+Aunque los dos servicios utilizan el mismo motor, sus bases de datos están completamente separadas. El microservicio de empleados no accede directamente a las tablas de departamentos; cuando necesita validar un `departamentoId`, realiza una solicitud HTTP REST al microservicio `gestion-departamentos`.
+
+**¿Qué se ganó con esta decisión?**
+
+- Se mantiene la independencia de los microservicios.
+- Se utiliza un motor conocido y adecuado para datos relacionales.
+- Se simplifica la configuración y operación del proyecto al trabajar con un único motor.
+- PostgreSQL permite manejar restricciones de integridad, persistencia y transacciones.
+- Se facilita la ejecución del sistema mediante Docker Compose.
+
+**¿Qué se sacrificó o costó?**
+
+Se renunció a utilizar motores diferentes para aprovechar la persistencia políglota. Esto significa que no se explota la posibilidad de seleccionar un motor diferente según las necesidades específicas de cada servicio.
+
+Sin embargo, para este proyecto se consideró que utilizar PostgreSQL en ambos servicios reduce la complejidad operacional y permite concentrar el esfuerzo en la comunicación entre microservicios, persistencia, validaciones y tolerancia a fallos.
+
+La independencia se mantiene a nivel de servicio y de base de datos, aunque el motor utilizado sea el mismo.
+
+---
+
+### 2. Creación del esquema
+
+Se decidió utilizar **auto-DDL mediante los ORM** para la creación del esquema de las bases de datos.
+
+En `gestion-empleados`, el esquema es administrado mediante **Hibernate/JPA**, utilizando:
+
+`spring.jpa.hibernate.ddl-auto=update`
+
+En `gestion-departamentos`, el esquema es creado mediante **SQLAlchemy**, utilizando:
+
+`Base.metadata.create_all(bind=engine)`
+
+Esta decisión permite que las tablas necesarias sean creadas automáticamente cuando los servicios se inicializan, evitando depender de una ejecución manual de scripts SQL para levantar el proyecto desde cero.
+
+**¿Qué se ganó con esta decisión?**
+
+- Configuración inicial sencilla.
+- El proyecto puede levantar las estructuras necesarias automáticamente.
+- Se reduce la cantidad de pasos manuales para ejecutar el sistema.
+- El esquema se encuentra relacionado directamente con los modelos utilizados por cada servicio.
+- Facilita el desarrollo y las pruebas del Reto 2.
+
+**¿Qué ocurre cuando el esquema tenga que cambiar y ya existan datos?**
+
+El uso de auto-DDL es conveniente para el desarrollo y las pruebas, pero tiene limitaciones cuando el sistema evoluciona y existen datos importantes.
+
+En un entorno de producción, no se recomienda depender de `ddl-auto=update` o de `create_all()` como estrategia principal para controlar cambios complejos del esquema. Para cambios que requieran transformaciones de datos, renombrar columnas, eliminar estructuras o mantener compatibilidad entre versiones, sería más adecuado utilizar un sistema de **migraciones versionadas**, como Flyway, Liquibase o Alembic.
+
+Por lo tanto, se eligió auto-DDL porque simplifica el objetivo del Reto 2 y permite reproducir la creación inicial del esquema, dejando las migraciones versionadas como una mejora para una evolución posterior del sistema.
+
+---
+
+### 3. Garantía de unicidad
+
+Se decidió utilizar **una combinación de validación previa en la aplicación y restricciones de unicidad en la base de datos**.
+
+Antes de registrar un empleado, `gestion-empleados` realiza las siguientes validaciones en este orden:
+
+1. Verifica que el `email` no exista.
+2. Verifica que el `numeroEmpleado` no exista.
+3. Consulta mediante REST al microservicio `gestion-departamentos` para comprobar que el departamento exista.
+4. Si todas las validaciones son correctas, registra el empleado.
+
+Además, la base de datos mantiene las restricciones de unicidad correspondientes para evitar duplicados a nivel de persistencia.
+
+La validación previa permite proporcionar una respuesta clara al usuario, mientras que la restricción `UNIQUE` de la base de datos funciona como garantía definitiva de integridad.
+
+**¿Qué ocurre si dos peticiones con el mismo email llegan al mismo tiempo?**
+
+Una consulta previa por sí sola no garantiza la unicidad en un escenario concurrente. Por ejemplo, dos peticiones podrían consultar al mismo tiempo y ambas comprobar que el correo todavía no existe.
+
+Por esta razón, la restricción `UNIQUE` de la base de datos es necesaria como última barrera. Si dos peticiones concurrentes intentan guardar el mismo `email`, PostgreSQL permite que solo una operación cumpla la restricción y rechaza la otra.
+
+La aplicación captura el error de integridad generado por la base de datos y lo transforma en una respuesta controlada para el cliente.
+
+De esta manera se obtiene:
+
+- Validación previa para proporcionar mensajes claros.
+- Restricción de base de datos para garantizar la integridad.
+- Protección frente a condiciones de carrera.
+- Respuesta `400 Bad Request` cuando se intenta registrar un email o `numeroEmpleado` duplicado.
+
