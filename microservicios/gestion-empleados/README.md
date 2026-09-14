@@ -1,281 +1,597 @@
-# Reto 1 – Servidor Web para Gestión Básica de Empleados
+# Gestión de Empleados - Reto 1 y Reto 2
 
-## ¿Qué es este proyecto?
+## Descripción
 
-Este microservicio, llamado `gestion-empleados`, es el primer componente de un sistema más grande que gestionará todo el ciclo de vida de los empleados de una empresa (desde que ingresan hasta que se retiran), construido con una arquitectura de microservicios.
+`gestion-empleados` es el primer microservicio del proyecto final. Su desarrollo comenzó en el Reto 1 como un servidor web para registrar y consultar empleados y posteriormente evolucionó en el Reto 2 hacia una solución persistente integrada con el microservicio de departamentos.
 
-En este primer reto, el objetivo es simple: construir un servidor web que permita **registrar empleados** y **consultarlos por su id**, manejando correctamente las rutas, los métodos HTTP y los códigos de estado. No hay base de datos todavía — los datos se guardan en la memoria de la aplicación mientras esta se está ejecutando (si se reinicia el servidor, los datos se pierden).
+El contenido del Reto 1 se conserva como antecedente del flujo de trabajo. La sección del Reto 2 documenta la evolución realizada.
+
+# Reto 1 - Servidor Web para Gestión Básica de Empleados
+
+## Objetivo
+
+Construir un servidor web capaz de registrar empleados, consultarlos por su identificador y responder correctamente ante errores de duplicidad, rutas inexistentes y métodos HTTP no soportados.
+
+En este reto no se utilizaba una base de datos. Los empleados se almacenaban en memoria mediante `ConcurrentHashMap`, por lo que los datos se perdían al reiniciar el servicio.
+# Reto 1 - Servidor Web para Gestión Básica de Empleados
+
+[svg](https://github.com/Luis-Morales-C/proyecto-final-microservicios/blob/main/microservicios/gestion-empleados/README.md#reto-1---servidor-web-para-gestión-básica-de-empleados)
+
+## Objetivo
+
+Construir un servidor web capaz de registrar empleados, consultarlos por su identificador y responder correctamente ante errores de duplicidad, rutas inexistentes y métodos HTTP no soportados.
+
+En este reto no se utilizaba una base de datos. Los empleados se almacenaban en memoria mediante `ConcurrentHashMap`, por lo que los datos se perdían al reiniciar el servicio.
 
 ## Tecnologías utilizadas
 
-| Tecnología | Uso en el proyecto |
+| Tecnología | Uso |
 |---|---|
-| **Java 21** | Lenguaje de programación del servicio |
-| **Spring Boot 4.1.0** | Framework que provee el servidor web y el enrutamiento HTTP |
-| **Maven** | Gestor de dependencias y herramienta de compilación |
-| **Docker** | Empaquetado y ejecución del servicio en un contenedor, independiente del sistema operativo |
-
-## Estructura del proyecto
-
-El código sigue una organización por capas, algo típico en aplicaciones Spring Boot, donde cada carpeta tiene una responsabilidad clara:
-
-```
-gestion-empleados/
-├── src/main/java/co/edu/uniquindio/gestionempleados/
-│   ├── GestionEmpleadosApplication.java   # Punto de entrada de la aplicación
-│   ├── controller/
-│   │   └── EmpleadoController.java        # Recibe las peticiones HTTP y las delega al servicio
-│   ├── service/
-│   │   └── EmpleadoService.java           # Contiene la lógica de negocio y las validaciones
-│   ├── repository/
-│   │   └── EmpleadoRepository.java        # Guarda y consulta los empleados en memoria
-│   ├── model/
-│   │   ├── Empleado.java                  # Estructura de datos de un empleado
-│   │   └── EstadoEmpleado.java            # Los posibles estados de un empleado
-│   └── exception/
-│       ├── EmpleadoDuplicadoException.java     # Se lanza si el email o número de empleado ya existen
-│       ├── EmpleadoNoEncontradoException.java  # Se lanza si se consulta un id que no existe
-│       └── GlobalExceptionHandler.java         # Traduce cada excepción a una respuesta HTTP
-├── Dockerfile                              # Instrucciones para construir la imagen del contenedor
-└── pom.xml                                 # Configuración de Maven y dependencias
-```
-
-**¿Por qué esta separación en capas?** Cada clase tiene una única responsabilidad: el `Controller` solo se encarga de recibir y responder peticiones HTTP, el `Service` contiene las reglas de negocio (por ejemplo, "no permitir emails duplicados"), y el `Repository` es el único lugar que sabe *cómo* se almacenan los datos. Esto facilita que, en retos futuros, se pueda cambiar el almacenamiento en memoria por una base de datos real sin tener que tocar el resto del código.
+| Java 21 | Lenguaje de programación |
+| Spring Boot 4.1.0 | Framework del servicio web |
+| Maven | Gestión de dependencias y compilación |
+| Docker | Contenerización |
 
 ## Modelo canónico de Empleado
 
-Este es el modelo de datos que representa a un empleado en todo el sistema. Se definió completo desde este primer reto para no tener que migrarlo más adelante:
+El modelo utilizado en el Reto 1 contiene los siguientes 10 campos:
+
+| Campo | Descripción |
+|---|---|
+| `id` | Identificador del empleado |
+| `nombre` | Nombre |
+| `apellido` | Apellido |
+| `email` | Correo electrónico |
+| `numeroEmpleado` | Número único del empleado |
+| `cargo` | Cargo |
+| `area` | Área |
+| `departamentoId` | Identificador del departamento |
+| `fechaIngreso` | Fecha de ingreso |
+| `estado` | Estado del empleado |
+
+Los estados contemplados son `ACTIVO`, `EN_VACACIONES` y `RETIRADO`. En el alcance del Reto 1 se utilizaba `ACTIVO`.
+
+## Estructura del Reto 1
+
+```text
+gestion-empleados/
+├── src/main/java/co/edu/uniquindio/gestionempleados/
+│   ├── GestionEmpleadosApplication.java
+│   ├── controller/
+│   │   └── EmpleadoController.java
+│   ├── service/
+│   │   └── EmpleadoService.java
+│   ├── repository/
+│   │   └── EmpleadoRepository.java
+│   ├── model/
+│   │   ├── Empleado.java
+│   │   └── EstadoEmpleado.java
+│   └── exception/
+│       ├── EmpleadoDuplicadoException.java
+│       ├── EmpleadoNoEncontradoException.java
+│       └── GlobalExceptionHandler.java
+├── Dockerfile
+└── pom.xml
+```
+
+## Endpoints del Reto 1
+
+### POST `/empleados`
+
+Registra un empleado.
+
+Resultado esperado:
+
+```text
+200 OK
+```
+
+Validaciones:
+
+- Email duplicado → `400 Bad Request`.
+- `numeroEmpleado` duplicado → `400 Bad Request`.
+
+### GET `/empleados/{id}`
+
+Consulta un empleado por su ID.
+
+Resultados:
+
+- Empleado existente → `200 OK`.
+- Empleado inexistente → `404 Not Found`.
+
+### Ruta inexistente
+
+Una ruta no soportada debe devolver:
+
+```text
+404 Not Found
+```
+
+con el mensaje:
+
+```text
+Recurso no encontrado
+```
+
+## Evidencias del Reto 1
+
+```text
+docs/evidencias/reto1/
+```
+
+### R1-01 - Registro exitoso
+
+```text
+POST http://localhost:8080/empleados
+```
+
+Resultado esperado:
+
+```text
+200 OK
+```
+
+**Imagen:**
+
+```text
+docs/evidencias/reto1/R1-01-registro-empleado.png
+```
+
+### R1-02 - Email duplicado
+
+Resultado esperado:
+
+```text
+400 Bad Request
+```
+
+**Imagen:**
+
+```text
+docs/evidencias/reto1/R1-02-email-duplicado.png
+```
+
+### R1-03 - NumeroEmpleado duplicado
+
+Resultado esperado:
+
+```text
+400 Bad Request
+```
+
+**Imagen:**
+
+```text
+docs/evidencias/reto1/R1-03-numero-duplicado.png
+```
+
+### R1-04 - Consulta de empleado existente
+
+```text
+GET http://localhost:8080/empleados/E001
+```
+
+Resultado esperado:
+
+```text
+200 OK
+```
+
+**Imagen:**
+
+```text
+docs/evidencias/reto1/R1-04-get-empleado.png
+```
+
+### R1-05 - Consulta de empleado inexistente
+
+```text
+GET http://localhost:8080/empleados/E999
+```
+
+Resultado esperado:
+
+```text
+404 Not Found
+```
+
+**Imagen:**
+
+```text
+docs/evidencias/reto1/R1-05-empleado-no-existe.png
+```
+
+### R1-06 - Ruta no soportada
+
+Resultado esperado:
+
+```text
+404 Not Found
+Recurso no encontrado
+```
+
+**Imagen:**
+
+```text
+docs/evidencias/reto1/R1-06-ruta-no-soportada.png
+```
+
+### R1-07 - Ejecución mediante Docker
+
+**Imagen:**
+
+```text
+docs/evidencias/reto1/R1-07-docker.png
+```
+
+# Reto 2 - Evolución a Persistencia y Microservicios
+
+[svg](https://github.com/Luis-Morales-C/proyecto-final-microservicios/blob/main/microservicios/gestion-empleados/README.md#reto-2---evolución-a-persistencia-y-microservicios)
+
+## Evolución realizada
+
+En el Reto 2 el servicio deja de almacenar empleados en memoria y pasa a utilizar PostgreSQL mediante Spring Data JPA y Hibernate.
+
+La organización por capas del Reto 1 se conserva y se incorpora una capa de persistencia real mediante `JpaRepository`.
+
+El modelo canónico completo permanece sin cambios: se conservan los 10 campos, incluido `estado`.
+
+## Tecnologías utilizadas en el Reto 2
+
+| Tecnología | Uso |
+|---|---|
+| Java 21 | Lenguaje |
+| Spring Boot 4.1.0 | Framework |
+| Spring MVC | Endpoints REST |
+| Spring Validation | Validación de entrada |
+| Spring Data JPA | Persistencia |
+| Hibernate | ORM y esquema |
+| PostgreSQL 18 | Base de datos |
+| RestClient | Comunicación con departamentos |
+| Springdoc OpenAPI | Swagger/OpenAPI |
+| Maven | Dependencias y compilación |
+| Docker | Contenerización |
+
+## Persistencia
+
+La entidad `Empleado` utiliza JPA y se almacena en PostgreSQL.
+
+El repositorio utiliza:
+
+```text
+JpaRepository<Empleado, String>
+```
+
+La configuración de Hibernate utiliza:
+
+```text
+spring.jpa.hibernate.ddl-auto=update
+```
+
+Esto permite crear o actualizar el esquema automáticamente al iniciar el servicio.
+
+## Configuración mediante variables de entorno
+
+La conexión a PostgreSQL utiliza:
+
+```text
+DB_HOST
+DB_PORT
+DB_NAME
+DB_USER
+DB_PASSWORD
+```
+
+La URL del servicio de departamentos utiliza:
+
+```text
+DEPARTAMENTOS_URL
+```
+
+Dentro de Docker:
+
+```text
+DEPARTAMENTOS_URL=http://gestion-departamentos:8000
+```
+
+No se utiliza `localhost` para la comunicación entre contenedores.
+
+## Comunicación con Gestión de Departamentos
+
+Antes de guardar un empleado, el servicio valida:
+
+1. Email.
+2. `numeroEmpleado`.
+3. Existencia del departamento mediante HTTP REST.
+
+La consulta interna es:
+
+```text
+GET http://gestion-departamentos:8000/departamentos/{id}
+```
+
+Si el departamento no existe, el empleado no se guarda y se devuelve:
+
+```text
+400 Bad Request
+```
+
+## Validación de unicidad
+
+El servicio utiliza dos mecanismos:
+
+```text
+Consulta previa
+      +
+Restricción UNIQUE en PostgreSQL
+```
+
+Para el email y `numeroEmpleado` se realizan consultas previas y además existen restricciones de unicidad en la base de datos.
+
+Esto protege también el caso de concurrencia. Si dos solicitudes pasan la consulta previa al mismo tiempo, PostgreSQL puede rechazar una inserción mediante la restricción `UNIQUE`. La excepción `DataIntegrityViolationException` se transforma en una respuesta controlada.
+
+## Timeout y reintentos
+
+La comunicación con departamentos utiliza:
+
+| Mecanismo | Configuración |
+|---|---|
+| Timeout de conexión | 2 segundos |
+| Timeout de lectura | 2 segundos |
+| Máximo de intentos | 4 |
+| Espera creciente | 1 s, 2 s, 4 s |
+| Agotamiento | `503 Service Unavailable` |
+
+Si departamentos no responde después de los intentos configurados, el empleado no se guarda.
+
+## Endpoints vigentes en el Reto 2
+
+### POST `/empleados`
+
+Registra un empleado.
+
+Resultado exitoso:
+
+```text
+201 Created
+```
+
+Debe conservar los 10 campos del modelo y devolver `estado = ACTIVO` al registrar.
+
+Validaciones:
+
+```text
+Email duplicado             → 400
+numeroEmpleado duplicado   → 400
+Departamento inexistente   → 400
+Departamento no disponible → 503
+```
+
+### GET `/empleados/{id}`
+
+```text
+200 OK → empleado encontrado
+404 Not Found → empleado inexistente
+```
+
+### GET `/empleados`
+
+Devuelve la lista de empleados:
+
+```text
+200 OK
+```
+
+## Ejemplo de empleado
 
 ```json
 {
   "id": "E001",
   "nombre": "Juan",
-  "apellido": "Pérez",
+  "apellido": "Perez",
   "email": "juan.perez@empresa.com",
   "numeroEmpleado": "EMP-2026-001",
-  "cargo": "Desarrollador Senior",
-  "area": "Tecnología",
+  "cargo": "Desarrollador",
+  "area": "Tecnologia",
   "departamentoId": "IT",
   "fechaIngreso": "2026-02-10",
   "estado": "ACTIVO"
 }
 ```
 
-### Explicación de cada campo
+## Swagger / OpenAPI
 
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `id` | texto | Identificador único del empleado |
-| `nombre` | texto | Nombre del empleado |
-| `apellido` | texto | Apellido del empleado |
-| `email` | texto | Correo electrónico. Debe ser único en el sistema |
-| `numeroEmpleado` | texto | Código interno de la empresa. Debe ser único en el sistema |
-| `cargo` | texto | Puesto que ocupa el empleado |
-| `area` | texto | Área o unidad de negocio a la que pertenece |
-| `departamentoId` | texto | Referencia al departamento. En este reto es texto libre; el servicio de departamentos se implementará en el Reto 2 |
-| `fechaIngreso` | fecha (`AAAA-MM-DD`) | Fecha en la que el empleado ingresó a la empresa |
-| `estado` | enum | Estado actual del empleado (ver abajo) |
+[svg](https://github.com/Luis-Morales-C/proyecto-final-microservicios/blob/main/microservicios/gestion-empleados/README.md#swagger--openapi)
 
-### Estados posibles del empleado
+Swagger UI:
 
-El modelo contempla tres estados, aunque en este reto solo se utiliza `ACTIVO`:
-
-- **ACTIVO**: empleado vinculado y con acceso al sistema.
-- **EN_VACACIONES**: vinculado, pero con el acceso suspendido temporalmente (se implementa en retos futuros).
-- **RETIRADO**: desvinculado. Es un estado final — el registro se conserva para auditoría y nunca se elimina (también se implementa más adelante).
-
-Si al registrar un empleado no se envía el campo `estado`, el sistema le asigna automáticamente `ACTIVO`.
-
-## Endpoints disponibles
-
-### 1. Registrar un empleado
-
-```
-POST /empleados
+```text
+http://localhost:8080/swagger-ui.html
 ```
 
-Esta operación recibe los datos de un empleado en el cuerpo de la petición y lo guarda en el sistema.
+OpenAPI:
 
-**Cuerpo de la petición (JSON):** un objeto con la estructura del modelo canónico descrito arriba.
-
-**Respuesta exitosa:**
-- Código: `200 OK`
-- Cuerpo: el empleado registrado, tal como quedó guardado.
-
-**Errores posibles — `400 Bad Request`:**
-
-El servicio valida que no se dupliquen dos campos clave. Si alguna validación falla, responde con el código `400` y un mensaje describiendo el problema:
-
-- Si el `email` ya está registrado por otro empleado:
-  ```
-  El email {email} ya está registrado
-  ```
-- Si el `numeroEmpleado` ya está registrado por otro empleado:
-  ```
-  El número de empleado {numeroEmpleado} ya está registrado
-  ```
-
-### 2. Consultar un empleado por id
-
-```
-GET /empleados/{id}
+```text
+http://localhost:8080/v3/api-docs
 ```
 
-Esta operación busca y devuelve la información de un empleado a partir de su identificador (`{id}` es el valor que reemplazás en la URL, por ejemplo `/empleados/E001`).
+**Evidencia:**
 
-**Respuesta exitosa:**
-- Código: `200 OK`
-- Cuerpo: la información completa del empleado correspondiente al `{id}` solicitado.
-
-**Si el empleado no existe:**
-- Código: `404 Not Found`
-- Cuerpo:
-  ```
-  El empleado con id {id} no existe
-  ```
-
-### 3. Rutas o métodos no soportados
-
-Cualquier petición a una ruta que no sea `/empleados` o `/empleados/{id}`, o que use un método HTTP distinto de los definidos (por ejemplo, un `DELETE`), responde de forma genérica:
-
-- Código: `404 Not Found`
-- Cuerpo:
-  ```
-  Recurso no encontrado
-  ```
-
-Este comportamiento está centralizado en la clase `GlobalExceptionHandler`, que intercepta tanto las rutas inexistentes como los métodos HTTP no soportados y responde de manera uniforme.
-
-## Cómo ejecutar el proyecto
-
-### Opción A: ejecución local (sin Docker)
-
-Útil para desarrollar y depurar directamente en tu máquina.
-
-```bash
-cd microservicios/gestion-empleados
-./mvnw clean package -DskipTests
-java -jar target/gestion-empleados-0.0.1-SNAPSHOT.jar
+```text
+docs/evidencias/reto2/swagger/R2-20-swagger-empleados.png
 ```
 
-El primer comando compila el proyecto y genera el `.jar`; el segundo lo ejecuta. La aplicación queda disponible en `http://localhost:8080`.
+## Evidencias del Reto 2
 
-### Opción B: ejecución con Docker (recomendada)
+### R2-01 - Registro exitoso
 
-El proyecto incluye un `Dockerfile` de **dos etapas** (multi-stage build):
-
-1. **Etapa de compilación**: usa una imagen con Maven y JDK 21 para compilar el proyecto y generar el `.jar`.
-2. **Etapa de ejecución**: usa una imagen mucho más liviana, que solo tiene el JRE (no Maven ni el código fuente), y copia el `.jar` ya compilado. Esto hace que la imagen final sea más pequeña y rápida de descargar/distribuir.
-
-**Paso 1 — Construir la imagen del contenedor:**
-
-Desde la carpeta `microservicios/gestion-empleados` (donde está el `Dockerfile`):
-
-```bash
-docker build -t servidor-empleados .
+```text
+POST http://localhost:8080/empleados
 ```
 
-- `docker build`: le indica a Docker que construya una imagen siguiendo las instrucciones del `Dockerfile`.
-- `-t servidor-empleados`: le asigna el nombre `servidor-empleados` a la imagen resultante.
-- `.`: indica que el `Dockerfile` está en la carpeta actual.
+Resultado esperado:
 
-**Paso 2 — Levantar el contenedor:**
-
-```bash
-docker run -p 8080:8080 servidor-empleados
+```text
+201 Created
 ```
 
-- `docker run`: crea y arranca un contenedor a partir de la imagen.
-- `-p 8080:8080`: conecta el puerto 8080 de tu computadora con el puerto 8080 dentro del contenedor (el que declara `EXPOSE 8080` en el Dockerfile).
-- `servidor-empleados`: el nombre de la imagen construida en el paso anterior.
+La respuesta debe mostrar los 10 campos y:
 
-Una vez levantado, la aplicación queda disponible en `http://localhost:8080`, igual que en la ejecución local.
+```text
+estado = ACTIVO
+```
 
-## Pruebas del servidor con Postman
+**Imagen:**
 
-Las pruebas de este servicio se realizaron con **Postman**, verificando que cada endpoint responda con el código de estado y el cuerpo esperado según lo definido en la consigna.
+```text
+docs/evidencias/reto2/postman/R2-11-crear-empleado.png
+```
 
-### Preparación
+### R2-02 - Email duplicado
 
-1. Abrir Postman y crear una nueva **Collection** llamada, por ejemplo, `Gestión de Empleados`.
-2. (Opcional pero recomendado) Crear un **Environment** con una variable `base_url` cuyo valor sea `http://localhost:8080`. Esto permite usar `{{base_url}}/empleados` en cada request y cambiar de entorno fácilmente en el futuro (por ejemplo, si el servicio se despliega en otro host).
-3. Asegurarse de que el servidor esté corriendo (localmente o en Docker) antes de enviar las peticiones.
+Resultado esperado:
 
-### Caso 1 — Registrar un empleado exitosamente
+```text
+400 Bad Request
+```
 
-- **Método:** `POST`
-- **URL:** `{{base_url}}/empleados`
-- **Body:** seleccionar `raw` → `JSON`, y pegar:
-  ```json
-  {
-    "id": "E001",
-    "nombre": "Juan",
-    "apellido": "Pérez",
-    "email": "juan.perez@empresa.com",
-    "numeroEmpleado": "EMP-2026-001",
-    "cargo": "Desarrollador Senior",
-    "area": "Tecnología",
-    "departamentoId": "IT",
-    "fechaIngreso": "2026-02-10",
-    "estado": "ACTIVO"
-  }
-  ```
-- **Resultado esperado:** `200 OK`, con el mismo empleado devuelto en el cuerpo de la respuesta.
+**Imagen:**
 
-### Caso 2 — Registrar un empleado con email duplicado
+```text
+docs/evidencias/reto2/postman/R2-12-email-duplicado.png
+```
 
-- **Método:** `POST`
-- **URL:** `{{base_url}}/empleados`
-- **Body:** el mismo del Caso 1, pero con un `id` y `numeroEmpleado` distintos y el mismo `email`:
-  ```json
-  {
-    "id": "E002",
-    "nombre": "Ana",
-    "apellido": "Gómez",
-    "email": "juan.perez@empresa.com",
-    "numeroEmpleado": "EMP-2026-002",
-    "cargo": "QA",
-    "area": "Tecnología",
-    "departamentoId": "IT",
-    "fechaIngreso": "2026-02-11",
-    "estado": "ACTIVO"
-  }
-  ```
-- **Resultado esperado:** `400 Bad Request`, con el mensaje `El email juan.perez@empresa.com ya está registrado`.
+### R2-03 - NumeroEmpleado duplicado
 
-### Caso 3 — Registrar un empleado con número de empleado duplicado
+Resultado esperado:
 
-- **Método:** `POST`
-- **URL:** `{{base_url}}/empleados`
-- **Body:** distinto `id` y `email`, pero mismo `numeroEmpleado` que el Caso 1.
-- **Resultado esperado:** `400 Bad Request`, con el mensaje `El número de empleado EMP-2026-001 ya está registrado`.
+```text
+400 Bad Request
+```
 
-### Caso 4 — Consultar un empleado existente
+**Imagen:**
 
-- **Método:** `GET`
-- **URL:** `{{base_url}}/empleados/E001`
-- **Resultado esperado:** `200 OK`, con la información completa del empleado `E001`.
+```text
+docs/evidencias/reto2/postman/R2-13-numero-duplicado.png
+```
 
-### Caso 5 — Consultar un empleado que no existe
+### R2-04 - Departamento inexistente
 
-- **Método:** `GET`
-- **URL:** `{{base_url}}/empleados/E999`
-- **Resultado esperado:** `404 Not Found`, con el mensaje `El empleado con id E999 no existe`.
+Resultado esperado:
 
-### Caso 6 — Ruta no soportada
+```text
+400 Bad Request
+```
 
-- **Método:** `GET`
-- **URL:** `{{base_url}}/ruta-que-no-existe`
-- **Resultado esperado:** `404 Not Found`, con el mensaje `Recurso no encontrado`.
+**Imagen:**
 
-### Caso 7 — Método HTTP no soportado
+```text
+docs/evidencias/reto2/postman/R2-14-departamento-no-existe.png
+```
 
-- **Método:** `DELETE`
-- **URL:** `{{base_url}}/empleados/E001`
-- **Resultado esperado:** `404 Not Found`, con el mensaje `Recurso no encontrado` (en este reto no existe un endpoint para eliminar empleados).
+### R2-05 - Consulta por ID
 
-## Notas adicionales
+```text
+GET http://localhost:8080/empleados/E001
+```
 
-- No se usa base de datos en este reto: los empleados se guardan en memoria mediante un `ConcurrentHashMap`, por lo que los datos se pierden al reiniciar el servicio.
-- El puerto expuesto por defecto es `8080`, tanto en ejecución local como en Docker.
-- Este servicio será extendido en retos posteriores, incorporando el resto de los microservicios (departamentos, autenticación, perfiles, vacaciones, notificaciones y el API Gateway) y una base de datos persistente.
+Resultado esperado:
+
+```text
+200 OK
+```
+
+**Imagen:**
+
+```text
+docs/evidencias/reto2/postman/R2-15-get-empleado.png
+```
+
+### R2-06 - Listado
+
+```text
+GET http://localhost:8080/empleados
+```
+
+Resultado esperado:
+
+```text
+200 OK
+```
+
+**Imagen:**
+
+```text
+docs/evidencias/reto2/postman/R2-16-listar-empleados.png
+```
+
+### R2-07 - Empleado inexistente
+
+Resultado esperado:
+
+```text
+404 Not Found
+```
+
+**Imagen:**
+
+```text
+docs/evidencias/reto2/postman/R2-17-empleado-no-existe.png
+```
+
+### R2-08 - Comunicación REST
+
+La evidencia debe demostrar que `gestion-empleados` valida el departamento mediante el servicio de departamentos y no mediante acceso directo a su base de datos.
+
+**Imagen:**
+
+```text
+docs/evidencias/reto2/integracion/R2-18-comunicacion-rest.png
+```
+
+### R2-09 - Timeout, reintentos y 503
+
+Detener temporalmente `gestion-departamentos` y realizar un registro válido.
+
+Resultado esperado después de los reintentos:
+
+```text
+503 Service Unavailable
+```
+
+**Imagen:**
+
+```text
+docs/evidencias/reto2/integracion/R2-19-timeout-retry-503.png
+```
+
+### R2-10 - Swagger empleados
+
+**Imagen:**
+
+```text
+docs/evidencias/reto2/swagger/R2-20-swagger-empleados.png
+```
+
+## Estado final del servicio
+
+
+
+Al finalizar el Reto 2, `gestion-empleados` cuenta con:
+
+- Persistencia PostgreSQL.
+- Spring Data JPA y Hibernate.
+- Modelo canónico de 10 campos.
+- Validación de email.
+- Validación de `numeroEmpleado`.
+- Validación de existencia de departamento.
+- Comunicación REST.
+- Timeout y reintentos.
+- Restricciones `UNIQUE`.
+- Endpoints POST y GET.
+- Swagger/OpenAPI.
+- Dockerfile.
+- Configuración mediante variables de entorno.
+
+Las funcionalidades reservadas para retos posteriores no se presentan como parte de este alcance.
