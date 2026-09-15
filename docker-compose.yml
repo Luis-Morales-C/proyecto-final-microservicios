@@ -24,8 +24,8 @@ services:
     build:
       context: ./microservicios/gestion-empleados
     container_name: gestion-empleados
-    ports:
-      - "8080:8080"
+    expose:
+      - "8081"
     environment:
       DB_HOST: database-empleados
       DB_PORT: 5432
@@ -66,8 +66,8 @@ services:
     build:
       context: ./microservicios/gestion-departamentos
     container_name: gestion-departamentos
-    ports:
-      - "8000:8000"
+    expose:
+      - "8082"
     environment:
       DB_HOST: database-departamentos
       DB_PORT: 5432
@@ -80,7 +80,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/departamentos')"
+          "import urllib.request; urllib.request.urlopen('http://localhost:8082/departamentos')"
         ]
       interval: 5s
       timeout: 3s
@@ -88,6 +88,24 @@ services:
       start_period: 10s
     depends_on:
       database-departamentos:
+        condition: service_healthy
+    networks:
+      - microservices-network
+
+
+  api-gateway:
+    build:
+      context: microservicios/api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"          # único puerto publicado al host de todo el ecosistema
+    environment:
+      EMPLEADOS_URL: ${EMPLEADOS_URL}
+      DEPARTAMENTOS_URL: ${DEPARTAMENTOS_URL}
+    depends_on:
+      gestion-empleados:
+        condition: service_started    # gestion-empleados no tiene healthcheck (aún)
+      gestion-departamentos:
         condition: service_healthy
     networks:
       - microservices-network

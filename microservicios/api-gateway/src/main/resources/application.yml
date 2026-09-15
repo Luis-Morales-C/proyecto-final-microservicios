@@ -1,0 +1,41 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      # Timeouts del cliente HTTP que usa el gateway para hablar con los microservicios.
+      # Si el destino no responde en este tiempo, se dispara un error que captura
+      # GatewayErrorHandler y se convierte en un 503 con cuerpo JSON.
+      httpclient:
+        connect-timeout: 3000    # ms
+        response-timeout: 10s
+
+      routes:
+        - id: empleados-service
+          uri: ${EMPLEADOS_URL:http://empleados-service:8081}
+          predicates:
+            - Path=/empleados/**
+
+        - id: departamentos-service
+          uri: ${DEPARTAMENTOS_URL:http://departamentos-service:8082}
+          predicates:
+            - Path=/departamentos/**
+
+      # No se agregan filtros de StripPrefix: las rutas internas de los servicios
+      # ya usan /empleados y /departamentos (Reto 2), así que el gateway reenvía
+      # el path tal cual llega.
+
+# Expone el health check propio del gateway en /health (sin el prefijo /actuator)
+management:
+  endpoints:
+    web:
+      base-path: "/"
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
