@@ -3,6 +3,8 @@ package co.edu.uniquindio.gestionempleados.client;
 import co.edu.uniquindio.gestionempleados.exception.DepartamentoNoDisponibleException;
 import co.edu.uniquindio.gestionempleados.exception.DepartamentoNoEncontradoException;
 import co.edu.uniquindio.gestionempleados.exception.DepartamentoServicioException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,10 +34,14 @@ public class DepartamentoClient {
     };
 
     private final RestClient restClient;
+    private final CircuitBreaker circuitBreaker;
 
     public DepartamentoClient(
-            @Value("${DEPARTAMENTOS_URL}") String departamentosUrl
+            @Value("${DEPARTAMENTOS_URL}") String departamentosUrl,
+            CircuitBreaker circuitBreaker
     ) {
+
+        this.circuitBreaker = circuitBreaker;
 
         HttpClient httpClient =
                 HttpClient.newBuilder()
@@ -60,7 +66,35 @@ public class DepartamentoClient {
                         .build();
     }
 
+    /**
+     * Punto de entrada protegido por el Circuit Breaker.
+     * Circuito OPEN: falla de inmediato, sin tocar la red.
+     * Se traduce a DepartamentoNoDisponibleException para que el resto
+     * del sistema (servicio y manejador de errores) siga funcionando igual.
+     */
     public void consultarDepartamento(
+            String departamentoId
+    ) {
+
+        try {
+
+            circuitBreaker.executeRunnable(
+                    () -> consultarConReintentos(departamentoId)
+            );
+
+        } catch (CallNotPermittedException ex) {
+
+            log.warn(
+                    "Circuito ABIERTO: consulta del departamento {} "
+                            + "bloqueada sin llamar a la red",
+                    departamentoId
+            );
+
+            throw new DepartamentoNoDisponibleException();
+        }
+    }
+
+    private void consultarConReintentos(
             String departamentoId
     ) {
 

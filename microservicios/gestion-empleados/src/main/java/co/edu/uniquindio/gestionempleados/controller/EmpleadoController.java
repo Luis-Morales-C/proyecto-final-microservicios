@@ -143,4 +143,24 @@ public class EmpleadoController {
                 )
         );
     }
+
+    @Operation(
+            summary = "Reconciliar empleados pendientes",
+            description = (
+                    "Revalida el departamento de los empleados en "
+                            + "PENDIENTE_VALIDACION. Pasan a ACTIVO, "
+                            + "o a RECHAZADO si el departamento no existe. "
+                            + "Retorna los que siguen pendientes."
+            )
+    )
+    @PostMapping("/reconciliar")
+    public ResponseEntity<MensajeDTO<List<Empleado>>> reconciliar() {
+
+        return ResponseEntity.ok(
+                new MensajeDTO<>(
+                        false,
+                        service.reconciliarPendientes()
+                )
+        );
+    }
 }
