@@ -33,6 +33,10 @@ services:
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DEPARTAMENTOS_URL: ${DEPARTAMENTOS_URL}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     depends_on:
       database-empleados:
         condition: service_healthy
@@ -93,6 +97,80 @@ services:
       - microservices-network
 
 
+  database-notificaciones:
+    container_name: database-notificaciones
+    image: postgres:18
+    environment:
+      POSTGRES_DB: notificaciones
+      POSTGRES_USER: notificaciones
+      POSTGRES_PASSWORD: notificaciones
+    volumes:
+      - notificaciones-db-data:/var/lib/postgresql
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notificaciones -d notificaciones"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - microservices-network
+
+  notificaciones-service:
+    container_name: notificaciones-service
+    restart: unless-stopped
+    build:
+      context: ./microservicios/notificaciones-service
+    environment:
+      PORT: 8083
+
+      DB_HOST: database-notificaciones
+      DB_PORT: 5432
+      DB_NAME: notificaciones
+      DB_USER: notificaciones
+      DB_PASSWORD: notificaciones
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    expose:
+      - "8083"
+    depends_on:
+      database-notificaciones:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - microservices-network
+
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    entrypoint: ["/bin/sh", "/etc/rabbitmq/init.sh"]
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "127.0.0.1:15672:15672"
+    expose:
+      - "5672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/init.sh:/etc/rabbitmq/init.sh:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - microservices-network
+
   api-gateway:
     build:
       context: microservicios/api-gateway
@@ -102,18 +180,22 @@ services:
     environment:
       EMPLEADOS_URL: ${EMPLEADOS_URL}
       DEPARTAMENTOS_URL: ${DEPARTAMENTOS_URL}
+      NOTIFICACIONES_URL: http://notificaciones-service:8083
     depends_on:
       gestion-empleados:
         condition: service_started    # gestion-empleados no tiene healthcheck (aún)
       gestion-departamentos:
         condition: service_healthy
+      notificaciones-service:
+        condition: service_started
     networks:
       - microservices-network
-
 
 volumes:
   empleados-db-data:
   departamentos-db-data:
+  rabbitmq-data:
+  notificaciones-db-data:
 
 
 networks:

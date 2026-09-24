@@ -284,6 +284,20 @@ public class GlobalExceptionHandler {
                 );
     }
 
+    @ExceptionHandler(EmpleadoRetiradoException.class)
+    public ResponseEntity<MensajeDTO<String>> handleEmpleadoRetirado(
+            EmpleadoRetiradoException ex
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(
+                        new MensajeDTO<>(
+                                true,
+                                ex.getMessage()
+                        )
+                );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<MensajeDTO<String>>
     handleGeneral(Exception ex) {
@@ -297,6 +311,20 @@ public class GlobalExceptionHandler {
                                 true,
                                 "Ocurrió un error interno "
                                         + "en el servidor"
+                        )
+                );
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<MensajeDTO<String>> handleRangoInvalido(
+            IllegalArgumentException ex
+    ) {
+        return ResponseEntity
+                .badRequest()
+                .body(
+                        new MensajeDTO<>(
+                                true,
+                                ex.getMessage()
                         )
                 );
     }

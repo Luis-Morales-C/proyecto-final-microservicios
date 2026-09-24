@@ -1,0 +1,91 @@
+{
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "rrhh.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "perfiles.empleados",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "notificaciones.empleados",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "notificaciones.vacaciones",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "rrhh.events",
+      "vhost": "/",
+      "destination": "perfiles.empleados",
+      "destination_type": "queue",
+      "routing_key": "empleado.creado",
+      "arguments": {}
+    },
+    {
+      "source": "rrhh.events",
+      "vhost": "/",
+      "destination": "perfiles.empleados",
+      "destination_type": "queue",
+      "routing_key": "empleado.actualizado",
+      "arguments": {}
+    },
+    {
+      "source": "rrhh.events",
+      "vhost": "/",
+      "destination": "perfiles.empleados",
+      "destination_type": "queue",
+      "routing_key": "empleado.retirado",
+      "arguments": {}
+    },
+    {
+      "source": "rrhh.events",
+      "vhost": "/",
+      "destination": "notificaciones.empleados",
+      "destination_type": "queue",
+      "routing_key": "empleado.creado",
+      "arguments": {}
+    },
+    {
+      "source": "rrhh.events",
+      "vhost": "/",
+      "destination": "notificaciones.empleados",
+      "destination_type": "queue",
+      "routing_key": "empleado.retirado",
+      "arguments": {}
+    },
+    {
+      "source": "rrhh.events",
+      "vhost": "/",
+      "destination": "notificaciones.vacaciones",
+      "destination_type": "queue",
+      "routing_key": "vacaciones.programadas",
+      "arguments": {}
+    }
+  ]
+}

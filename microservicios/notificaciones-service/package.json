@@ -1,0 +1,17 @@
+{
+  "name": "notificaciones-service",
+  "version": "1.0.0",
+  "description": "Microservicio de notificaciones del sistema RRHH",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
+  }
+}

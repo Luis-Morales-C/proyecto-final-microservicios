@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -56,8 +57,8 @@ class EmpleadoControllerTest {
                         )
                         .build();
 
-        objectMapper =
-                new ObjectMapper();
+        objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule());
 
         empleado =
                 new Empleado(

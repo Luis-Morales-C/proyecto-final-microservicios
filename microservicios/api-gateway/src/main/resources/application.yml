@@ -25,6 +25,11 @@ spring:
           predicates:
             - Path=/departamentos/**
 
+        - id: notificaciones-service
+          uri: ${NOTIFICACIONES_URL:http://notificaciones-service:8083}
+          predicates:
+            - Path=/notificaciones,/notificaciones/**
+
       # No se agregan filtros de StripPrefix: las rutas internas de los servicios
       # ya usan /empleados y /departamentos (Reto 2), así que el gateway reenvía
       # el path tal cual llega.

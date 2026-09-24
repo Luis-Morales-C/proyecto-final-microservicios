@@ -12,7 +12,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-
+import co.edu.uniquindio.gestionempleados.event.EmpleadoEventPublisher;
+import co.edu.uniquindio.gestionempleados.dto.ActualizarEmpleadoDTO;
+import co.edu.uniquindio.gestionempleados.exception.EmpleadoRetiradoException;
+import java.util.List;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -23,13 +27,15 @@ public class EmpleadoService {
 
     private final EmpleadoRepository repository;
     private final DepartamentoClient departamentoClient;
+    private final EmpleadoEventPublisher eventPublisher;
 
     public EmpleadoService(
             EmpleadoRepository repository,
-            DepartamentoClient departamentoClient
+            DepartamentoClient departamentoClient, EmpleadoEventPublisher eventPublisher
     ) {
         this.repository = repository;
         this.departamentoClient = departamentoClient;
+        this.eventPublisher = eventPublisher;
     }
 
     public Empleado registrar(Empleado empleado) {
@@ -69,7 +75,9 @@ public class EmpleadoService {
 
         try {
 
-            return repository.saveAndFlush(empleado);
+            Empleado guardado = repository.saveAndFlush(empleado);
+            eventPublisher.publicarCreado(guardado);
+            return guardado;
 
         } catch (DataIntegrityViolationException ex) {
 
@@ -151,6 +159,55 @@ public class EmpleadoService {
         }
     }
 
+    public Empleado actualizar(String id, ActualizarEmpleadoDTO cambios) {
+        Empleado existente = consultar(id);
+
+        if (existente.getEstado() == EstadoEmpleado.RETIRADO) {
+            throw new EmpleadoRetiradoException(
+                    "No se puede actualizar un empleado retirado"
+            );        }
+
+        if (!existente.getEmail().equalsIgnoreCase(cambios.email())) {
+            validarEmailUnico(cambios.email());
+        }
+
+        try {
+            departamentoClient.consultarDepartamento(
+                    cambios.departamentoId()
+            );
+
+            if (existente.getEstado() == EstadoEmpleado.PENDIENTE_VALIDACION) {
+                existente.setEstado(EstadoEmpleado.ACTIVO);
+            }
+
+        } catch (DepartamentoNoDisponibleException ex) {
+            log.warn(
+                    "Fallback: actualización de empleado {} queda PENDIENTE_VALIDACION",
+                    existente.getNumeroEmpleado()
+            );
+
+            existente.setEstado(EstadoEmpleado.PENDIENTE_VALIDACION);
+        }
+
+        existente.setNombre(cambios.nombre());
+        existente.setApellido(cambios.apellido());
+        existente.setEmail(cambios.email());
+        existente.setCargo(cambios.cargo());
+        existente.setArea(cambios.area());
+        existente.setDepartamentoId(cambios.departamentoId());
+
+        try {
+            Empleado guardado = repository.saveAndFlush(existente);
+            eventPublisher.publicarActualizado(guardado);
+            return guardado;
+
+        } catch (DataIntegrityViolationException ex) {
+            throw new EmpleadoDuplicadoException(
+                    "El email ya está registrado"
+            );
+        }
+    }
+
     public Empleado consultar(String id) {
 
         return repository.findById(id)
@@ -162,5 +219,58 @@ public class EmpleadoService {
     public List<Empleado> consultarTodos() {
 
         return repository.findAll();
+    }
+
+    public List<Empleado> consultarPorEstado(EstadoEmpleado estado) {
+        return repository.findByEstado(estado);
+    }
+
+    public Empleado retirar(String id) {
+        Empleado existente = consultar(id);
+
+        if (existente.getEstado() == EstadoEmpleado.RETIRADO) {
+            throw new EmpleadoRetiradoException(
+                    "El empleado ya se encuentra retirado"
+            );
+        }
+
+        existente.setEstado(EstadoEmpleado.RETIRADO);
+        existente.setFechaRetiro(LocalDateTime.now());
+
+        Empleado guardado = repository.saveAndFlush(existente);
+        eventPublisher.publicarRetirado(guardado);
+
+        return guardado;
+    }
+
+    public List<Empleado> consultarAuditoria(
+            LocalDateTime desde,
+            LocalDateTime hasta
+    ) {
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new IllegalArgumentException(
+                    "La fecha desde no puede ser posterior a la fecha hasta"
+            );
+        }
+
+        EstadoEmpleado estado = EstadoEmpleado.RETIRADO;
+
+        if (desde == null && hasta == null) {
+            return repository.findByEstadoOrderByFechaRetiroDesc(estado);
+        }
+
+        if (desde != null && hasta == null) {
+            return repository.buscarRetiradosDesde(estado, desde);
+        }
+
+        if (desde == null) {
+            return repository.buscarRetiradosHasta(estado, hasta);
+        }
+
+        return repository.buscarRetiradosEntre(
+                estado,
+                desde,
+                hasta
+        );
     }
 }

@@ -13,7 +13,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Pattern;
-
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 
 @Entity
@@ -94,6 +94,14 @@ public class Empleado {
         )
         @Schema(example = "2026-02-10")
         private LocalDate fechaIngreso;
+
+        @Column(name = "fecha_retiro")
+        @Schema(
+                description = "Fecha y hora del retiro lógico. Es nula mientras el empleado no esté retirado",
+                example = "2026-09-22T17:45:00",
+                accessMode = Schema.AccessMode.READ_ONLY
+        )
+        private LocalDateTime fechaRetiro;
 
         @Enumerated(EnumType.STRING)
         @Column(
@@ -211,5 +219,13 @@ public class Empleado {
 
         public void setEstado(EstadoEmpleado estado) {
                 this.estado = estado;
+        }
+
+        public LocalDateTime getFechaRetiro() {
+                return fechaRetiro;
+        }
+
+        public void setFechaRetiro(LocalDateTime fechaRetiro) {
+                this.fechaRetiro = fechaRetiro;
         }
 }

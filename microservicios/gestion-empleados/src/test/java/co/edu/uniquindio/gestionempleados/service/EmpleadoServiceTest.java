@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import co.edu.uniquindio.gestionempleados.event.EmpleadoEventPublisher;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -30,11 +31,14 @@ class EmpleadoServiceTest {
     @Mock
     private EmpleadoRepository repository;
 
+    @InjectMocks
+    private EmpleadoService service;
+
     @Mock
     private DepartamentoClient departamentoClient;
 
-    @InjectMocks
-    private EmpleadoService service;
+    @Mock
+    private EmpleadoEventPublisher eventPublisher;
 
     private Empleado empleado;
 
@@ -88,6 +92,7 @@ class EmpleadoServiceTest {
         verify(repository).saveAndFlush(
                 empleado
         );
+        verify(eventPublisher).publicarCreado(empleado);
     }
 
     @Test
@@ -169,31 +174,24 @@ class EmpleadoServiceTest {
     }
 
     @Test
-    void debeRechazarDepartamentoNoDisponible() {
-
-        when(repository.existsByEmailIgnoreCase(
-                empleado.getEmail()
-        )).thenReturn(false);
-
-        when(repository.existsByNumeroEmpleadoIgnoreCase(
-                empleado.getNumeroEmpleado()
-        )).thenReturn(false);
+    void debeRegistrarPendienteCuandoDepartamentoNoDisponible() {
 
         doThrow(
                 new DepartamentoNoDisponibleException()
-        ).when(
-                departamentoClient
-        ).consultarDepartamento("IT");
+        ).when(departamentoClient).consultarDepartamento("IT");
 
-        assertThrows(
-                DepartamentoNoDisponibleException.class,
-                () -> service.registrar(empleado)
+        when(repository.saveAndFlush(any(Empleado.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Empleado resultado = service.registrar(empleado);
+
+        assertEquals(
+                EstadoEmpleado.PENDIENTE_VALIDACION,
+                resultado.getEstado()
         );
 
-        verify(
-                repository,
-                never()
-        ).saveAndFlush(any());
+        verify(repository).saveAndFlush(empleado);
+        verify(eventPublisher).publicarCreado(empleado);
     }
 
     @Test
