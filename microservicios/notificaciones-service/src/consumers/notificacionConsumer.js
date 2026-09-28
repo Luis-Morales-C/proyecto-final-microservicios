@@ -4,7 +4,21 @@ const { procesarEvento } = require(
     "../services/notificacionService"
 );
 
-const COLA_EMPLEADOS = "notificaciones.empleados";
+const COLAS = [
+    {
+        nombre: "notificaciones.empleados",
+        tipos: new Set([
+            "empleado.creado",
+            "empleado.retirado"
+        ])
+    },
+    {
+        nombre: "notificaciones.vacaciones",
+        tipos: new Set([
+            "vacaciones.programadas"
+        ])
+    }
+];
 
 async function iniciarConsumidor() {
     const conexion = await amqp.connect({
@@ -15,66 +29,53 @@ async function iniciarConsumidor() {
     });
 
     const canal = await conexion.createChannel();
-
     await canal.prefetch(1);
 
-    await canal.assertQueue(COLA_EMPLEADOS, {
-        durable: true
-    });
+    for (const configuracion of COLAS) {
+        await canal.assertQueue(configuracion.nombre, {
+            durable: true
+        });
 
-    await canal.consume(
-        COLA_EMPLEADOS,
-        async (mensaje) => {
-            if (!mensaje) {
-                return;
-            }
-
-            try {
-                const evento = JSON.parse(
-                    mensaje.content.toString("utf8")
-                );
-
-                if (
-                    evento.type !== "empleado.creado" &&
-                    evento.type !== "empleado.retirado"
-                ) {
-                    console.log(
-                        `Evento no gestionado: ${evento.type}`
-                    );
-
-                    canal.ack(mensaje);
+        await canal.consume(
+            configuracion.nombre,
+            async (mensaje) => {
+                if (!mensaje) {
                     return;
                 }
 
-                await procesarEvento(evento);
-
-                canal.ack(mensaje);
-            } catch (error) {
-                console.error(
-                    "Error procesando evento:",
-                    error
-                );
-
-                // Cerramos el canal sin confirmar el mensaje.
-                // RabbitMQ podrá reentregarlo cuando el servicio
-                // vuelva a conectarse.
                 try {
-                    await canal.close();
-                } finally {
-                    await conexion.close();
+                    const evento = JSON.parse(
+                        mensaje.content.toString("utf8")
+                    );
+
+                    if (!configuracion.tipos.has(evento.type)) {
+                        console.log(
+                            `Evento no gestionado en ${configuracion.nombre}: ${evento.type}`
+                        );
+                        canal.ack(mensaje);
+                        return;
+                    }
+
+                    await procesarEvento(evento);
+                    canal.ack(mensaje);
+                } catch (error) {
+                    console.error(
+                        `Error procesando evento de ${configuracion.nombre}:`,
+                        error
+                    );
+
+                    // Se reencola para permitir reintento. La tabla
+                    // eventos_procesados hace que el efecto sea idempotente.
+                    canal.nack(mensaje, false, true);
                 }
+            },
+            { noAck: false }
+        );
 
-                process.exit(1);
-            }
-        },
-        {
-            noAck: false
-        }
-    );
-
-    console.log(
-        `Escuchando cola: ${COLA_EMPLEADOS}`
-    );
+        console.log(
+            `Escuchando cola: ${configuracion.nombre}`
+        );
+    }
 
     conexion.on("error", (error) => {
         console.error(
@@ -87,7 +88,6 @@ async function iniciarConsumidor() {
         console.error(
             "Se cerró la conexión con RabbitMQ"
         );
-
         process.exit(1);
     });
 

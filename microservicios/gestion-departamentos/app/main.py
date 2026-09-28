@@ -23,16 +23,16 @@ app = FastAPI(
         "Este microservicio mantiene su propia base de datos PostgreSQL."
     ),
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    docs_url="/departamentos/docs",
+    redoc_url="/departamentos/redoc",
+    openapi_url="/departamentos/openapi.json"
 )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(
-    request: Request,
-    exc: RequestValidationError
+        request: Request,
+        exc: RequestValidationError
 ):
     detalles = []
 
@@ -95,8 +95,8 @@ async def validation_exception_handler(
 
 @app.exception_handler(IntegrityError)
 async def integrity_error_handler(
-    request: Request,
-    exc: IntegrityError
+        request: Request,
+        exc: IntegrityError
 ):
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
@@ -112,8 +112,8 @@ async def integrity_error_handler(
 
 @app.exception_handler(OperationalError)
 async def operational_error_handler(
-    request: Request,
-    exc: OperationalError
+        request: Request,
+        exc: OperationalError
 ):
     return JSONResponse(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -129,8 +129,8 @@ async def operational_error_handler(
 
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_error_handler(
-    request: Request,
-    exc: SQLAlchemyError
+        request: Request,
+        exc: SQLAlchemyError
 ):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -146,8 +146,8 @@ async def sqlalchemy_error_handler(
 
 @app.exception_handler(Exception)
 async def general_exception_handler(
-    request: Request,
-    exc: Exception
+        request: Request,
+        exc: Exception
 ):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -164,8 +164,8 @@ async def general_exception_handler(
     status_code=status.HTTP_201_CREATED,
     summary="Registrar un departamento",
     description=(
-        "Registra un nuevo departamento en la base de datos. "
-        "El identificador debe ser único."
+            "Registra un nuevo departamento en la base de datos. "
+            "El identificador debe ser único."
     ),
     responses={
         201: {
@@ -186,8 +186,8 @@ async def general_exception_handler(
     }
 )
 def registrar_departamento(
-    departamento: DepartamentoCreate,
-    db: Session = Depends(get_db)
+        departamento: DepartamentoCreate,
+        db: Session = Depends(get_db)
 ):
     existente = obtener_departamento(
         db,
@@ -214,8 +214,8 @@ def registrar_departamento(
     response_model=DepartamentoResponse,
     summary="Consultar un departamento",
     description=(
-        "Obtiene un departamento utilizando "
-        "su identificador."
+            "Obtiene un departamento utilizando "
+            "su identificador."
     ),
     responses={
         200: {
@@ -233,8 +233,8 @@ def registrar_departamento(
     }
 )
 def consultar_departamento(
-    departamento_id: str,
-    db: Session = Depends(get_db)
+        departamento_id: str,
+        db: Session = Depends(get_db)
 ):
     departamento = obtener_departamento(
         db,
@@ -258,14 +258,14 @@ def consultar_departamento(
     response_model=list[DepartamentoResponse],
     summary="Listar departamentos",
     description=(
-        "Obtiene todos los departamentos "
-        "registrados."
+            "Obtiene todos los departamentos "
+            "registrados."
     ),
     responses={
         200: {
             "description": (
-                "Lista de departamentos. "
-                "Puede ser una lista vacía."
+                    "Lista de departamentos. "
+                    "Puede ser una lista vacía."
             )
         },
         500: {
@@ -277,6 +277,6 @@ def consultar_departamento(
     }
 )
 def listar_departamentos(
-    db: Session = Depends(get_db)
+        db: Session = Depends(get_db)
 ):
     return obtener_departamentos(db)

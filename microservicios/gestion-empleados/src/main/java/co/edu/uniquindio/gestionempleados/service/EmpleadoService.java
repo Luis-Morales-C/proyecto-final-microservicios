@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import co.edu.uniquindio.gestionempleados.event.EmpleadoEventPublisher;
 import co.edu.uniquindio.gestionempleados.dto.ActualizarEmpleadoDTO;
 import co.edu.uniquindio.gestionempleados.exception.EmpleadoRetiradoException;
-import java.util.List;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -165,7 +164,8 @@ public class EmpleadoService {
         if (existente.getEstado() == EstadoEmpleado.RETIRADO) {
             throw new EmpleadoRetiradoException(
                     "No se puede actualizar un empleado retirado"
-            );        }
+            );
+        }
 
         if (!existente.getEmail().equalsIgnoreCase(cambios.email())) {
             validarEmailUnico(cambios.email());

@@ -11,7 +11,7 @@ spring:
       # Si el destino no responde en este tiempo, se dispara un error que captura
       # GatewayErrorHandler y se convierte en un 503 con cuerpo JSON.
       httpclient:
-        connect-timeout: 3000    # ms
+        connect-timeout: 3000
         response-timeout: 10s
 
       routes:
@@ -30,11 +30,19 @@ spring:
           predicates:
             - Path=/notificaciones,/notificaciones/**
 
-      # No se agregan filtros de StripPrefix: las rutas internas de los servicios
-      # ya usan /empleados y /departamentos (Reto 2), así que el gateway reenvía
-      # el path tal cual llega.
+        - id: perfiles-service
+          uri: ${PERFILES_URL:http://perfiles-service:8084}
+          predicates:
+            - Path=/perfiles,/perfiles/**
 
-# Expone el health check propio del gateway en /health (sin el prefijo /actuator)
+        - id: vacaciones-service
+          uri: ${VACACIONES_URL:http://vacaciones-service:8085}
+          predicates:
+            - Path=/vacaciones,/vacaciones/**
+
+      # No se agregan filtros de StripPrefix: las rutas internas de los servicios
+      # ya usan sus prefijos, así que el gateway reenvía el path tal cual llega.
+
 management:
   endpoints:
     web:
