@@ -16,8 +16,16 @@ async function inicializarBaseDeDatos() {
       destinatario VARCHAR(255) NOT NULL,
       mensaje TEXT NOT NULL,
       fecha_envio TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      empleado_id VARCHAR(255) NOT NULL
+      empleado_id VARCHAR(255)
     )
+    `);
+
+    // Reto 5: las notificaciones de seguridad (p. ej. recuperar la
+    // contraseña del admin semilla) pueden no tener empleado. Idempotente:
+    // también corrige tablas creadas antes en un volumen existente.
+    await pool.query(`
+        ALTER TABLE notificaciones
+        ALTER COLUMN empleado_id DROP NOT NULL
     `);
 
     await pool.query(`

@@ -54,11 +54,31 @@ async function obtenerContacto(empleadoId) {
     return resultado.rows[0] || null;
 }
 
-async function registrarEmpleadoYNotificacionDesdeEvento(
-    eventoId,
-    contacto,
-    notificacion
-) {
+async function obtenerContactoPorEmail(email) {
+    const resultado = await pool.query(
+        `
+      SELECT
+        empleado_id AS "empleadoId",
+        nombre,
+        email,
+        activo
+      FROM empleados_contacto
+      WHERE LOWER(email) = LOWER($1)
+      LIMIT 1
+    `,
+        [email]
+    );
+
+    return resultado.rows[0] || null;
+}
+
+/**
+ * empleado.creado / empleado.retirado: sincroniza el contacto local y
+ * deja constancia del evento, SIN generar notificación (los correos
+ * salen con usuario.creado y cuenta.desactivada).
+ * Si contacto.nombre es null (retirado) se conserva el nombre existente.
+ */
+async function registrarEmpleadoDesdeEvento(eventoId, contacto) {
     const cliente = await pool.connect();
 
     try {
@@ -86,9 +106,9 @@ async function registrarEmpleadoYNotificacionDesdeEvento(
           activo,
           actualizado_en
         )
-        VALUES ($1, $2, $3, $4, NOW())
+        VALUES ($1, COALESCE($2::text, 'empleado'), $3, $4, NOW())
         ON CONFLICT (empleado_id) DO UPDATE
-        SET nombre = EXCLUDED.nombre,
+        SET nombre = COALESCE($2::text, empleados_contacto.nombre),
             email = EXCLUDED.email,
             activo = EXCLUDED.activo,
             actualizado_en = NOW()
@@ -101,16 +121,11 @@ async function registrarEmpleadoYNotificacionDesdeEvento(
             ]
         );
 
-        const guardada = await insertarNotificacion(
-            cliente,
-            notificacion
-        );
-
         await cliente.query("COMMIT");
 
         return {
             duplicado: false,
-            notificacion: guardada
+            notificacion: null
         };
     } catch (error) {
         await cliente.query("ROLLBACK");
@@ -197,7 +212,7 @@ async function insertarNotificacion(cliente, notificacion) {
             notificacion.tipo,
             notificacion.destinatario,
             notificacion.mensaje,
-            notificacion.empleadoId
+            notificacion.empleadoId || null
         ]
     );
 
@@ -208,6 +223,7 @@ module.exports = {
     listarTodas,
     listarPorEmpleado,
     obtenerContacto,
-    registrarEmpleadoYNotificacionDesdeEvento,
+    obtenerContactoPorEmail,
+    registrarEmpleadoDesdeEvento,
     registrarDesdeEvento
 };

@@ -84,7 +84,9 @@ const swaggerDocument = {
                         enum: [
                             "BIENVENIDA",
                             "DESVINCULACION",
-                            "VACACIONES"
+                            "VACACIONES",
+                            "SEGURIDAD",
+                            "CUENTA"
                         ]
                     },
                     destinatario: {
@@ -99,7 +101,8 @@ const swaggerDocument = {
                         format: "date-time"
                     },
                     empleadoId: {
-                        type: "string"
+                        type: "string",
+                        nullable: true
                     }
                 }
             }

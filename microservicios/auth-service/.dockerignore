@@ -1,0 +1,8 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+README.md
+Dockerfile
+.dockerignore
