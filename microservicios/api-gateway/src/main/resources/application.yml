@@ -40,6 +40,11 @@ spring:
           predicates:
             - Path=/vacaciones,/vacaciones/**
 
+        - id: auth-service
+          uri: ${AUTH_URL:http://auth-service:8086}
+          predicates:
+            - Path=/auth/**
+
       # No se agregan filtros de StripPrefix: las rutas internas de los servicios
       # ya usan sus prefijos, así que el gateway reenvía el path tal cual llega.
 
@@ -52,3 +57,8 @@ management:
   endpoint:
     health:
       show-details: never
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER:auth-service}
