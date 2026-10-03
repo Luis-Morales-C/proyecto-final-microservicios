@@ -19,7 +19,11 @@ public sealed class VacationEventPublisher : IDisposable
         _logger = logger;
     }
 
-    public bool PublishScheduled(Vacacion vacation)
+    public bool PublishScheduled(Vacacion vacation) => Publish("vacaciones.programadas", vacation);
+    public bool PublishStarted(Vacacion vacation)   => Publish("vacaciones.iniciadas", vacation);
+    public bool PublishFinished(Vacacion vacation)  => Publish("vacaciones.finalizadas", vacation);
+
+    private bool Publish(string routingKey, Vacacion vacation)
     {
         try
         {
@@ -29,7 +33,7 @@ public sealed class VacationEventPublisher : IDisposable
 
                 var envelope = new EventoEnvelope<VacacionesProgramadasData>(
                     Guid.NewGuid().ToString(),
-                    "vacaciones.programadas",
+                    routingKey,
                     1,
                     DateTimeOffset.UtcNow,
                     "vacaciones-service",
@@ -49,20 +53,16 @@ public sealed class VacationEventPublisher : IDisposable
                 properties.Persistent = true;
                 properties.ContentType = "application/json";
 
-                _channel.BasicPublish(
-                    Exchange,
-                    "vacaciones.programadas",
-                    mandatory: false,
-                    basicProperties: properties,
-                    body: body);
+                _channel.BasicPublish(Exchange, routingKey, mandatory: false,
+                    basicProperties: properties, body: body);
             }
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "La vacación fue persistida, pero no fue posible publicar vacaciones.programadas");
+            _logger.LogError(ex, "No fue posible publicar {RoutingKey} para la vacación {Id}",
+                routingKey, vacation.Id);
             ResetConnection();
             return false;
         }

@@ -156,4 +156,55 @@ public sealed class VacationRepository(NpgsqlDataSource dataSource)
         reader.GetString(4),
         reader.GetFieldValue<DateTimeOffset>(5)
     );
+
+    public async Task<IReadOnlyList<Vacacion>> ObtenerProgramadasParaIniciarAsync(
+        DateOnly hoy, CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand("""
+            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion
+            FROM vacaciones
+            WHERE estado = 'PROGRAMADA' AND fecha_inicio <= @hoy
+            ORDER BY fecha_inicio
+            """);
+        command.Parameters.AddWithValue("hoy", hoy);
+        return await LeerListaAsync(command, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Vacacion>> ObtenerEnCursoParaFinalizarAsync(
+        DateOnly hoy, CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand("""
+            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion
+            FROM vacaciones
+            WHERE estado = 'EN_CURSO' AND fecha_fin < @hoy
+            ORDER BY fecha_fin
+            """);
+        command.Parameters.AddWithValue("hoy", hoy);
+        return await LeerListaAsync(command, cancellationToken);
+    }
+
+    // UPDATE condicionado al estado de origen: la transición es atómica y no pisa cambios concurrentes.
+    public async Task<bool> TransicionarEstadoAsync(
+        string id, string desde, string hacia, CancellationToken cancellationToken)
+    {
+        await using var command = dataSource.CreateCommand("""
+            UPDATE vacaciones
+            SET estado = @hacia
+            WHERE id = @id AND estado = @desde
+            """);
+        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("desde", desde);
+        command.Parameters.AddWithValue("hacia", hacia);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
+
+    private static async Task<IReadOnlyList<Vacacion>> LeerListaAsync(
+        NpgsqlCommand command, CancellationToken cancellationToken)
+    {
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var results = new List<Vacacion>();
+        while (await reader.ReadAsync(cancellationToken))
+            results.Add(ReadVacation(reader));
+        return results;
+    }
 }
