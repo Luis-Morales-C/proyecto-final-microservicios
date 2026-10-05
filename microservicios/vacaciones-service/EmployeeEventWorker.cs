@@ -395,10 +395,7 @@ public sealed class EmployeeEventWorker(
                         UPDATE vacaciones
                         SET estado = 'CANCELADA'
                         WHERE empleado_id = @empleadoId
-                          AND estado IN (
-                              'PROGRAMADA',
-                              'EN_CURSO'
-                          )
+                          AND estado = 'PROGRAMADA'
                         """,
                         connection,
                         transaction

@@ -153,6 +153,12 @@ services:
       - "--fail"
       - "--silent"
       - "--show-error"
+      - "--retry"
+      - "15"
+      - "--retry-delay"
+      - "2"
+      - "--retry-connrefused"
+      - "--retry-all-errors"
       - "--user"
       - "${RABBITMQ_USER}:${RABBITMQ_PASSWORD}"
       - "--header"
@@ -218,6 +224,8 @@ services:
       RABBITMQ_PORT: "5672"
       RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # Logs: oculta el SQL de Hibernate
+      SPRING_JPA_SHOW_SQL: "false"
     depends_on:
       database-empleados:
         condition: service_healthy
@@ -253,6 +261,8 @@ services:
       ADMIN_EMPLEADO_ID: ${ADMIN_EMPLEADO_ID:-admin}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      # Logs: oculta peticiones HTTP y healthchecks de ASP.NET
+      Logging__LogLevel__Microsoft.AspNetCore: Warning
     expose:
       - "8086"
     healthcheck:
@@ -352,6 +362,8 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       VACACIONES_SCHEDULER_INTERVALO_SEGUNDOS: ${VACACIONES_SCHEDULER_INTERVALO_SEGUNDOS:-60}
       ENABLE_DEV_ENDPOINTS: ${ENABLE_DEV_ENDPOINTS:-false}
+      # Logs: oculta peticiones HTTP y healthchecks de ASP.NET
+      Logging__LogLevel__Microsoft.AspNetCore: Warning
     expose:
       - "8085"
     healthcheck:

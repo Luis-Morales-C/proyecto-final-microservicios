@@ -49,7 +49,7 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
 
         HttpStatus status = resolveStatus(ex);
         String errorPhrase = status.getReasonPhrase();
-        String message = buildMessage(status);
+        String message = buildMessage(status, ex);
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now().toString());
@@ -108,7 +108,15 @@ public class GatewayErrorHandler implements ErrorWebExceptionHandler {
         return false;
     }
 
-    private String buildMessage(HttpStatus status) {
+    private String buildMessage(HttpStatus status, Throwable ex) {
+        if (status == HttpStatus.UNAUTHORIZED || status == HttpStatus.FORBIDDEN) {
+            if (ex instanceof ResponseStatusException rse && rse.getReason() != null) {
+                return rse.getReason();
+            }
+            return status == HttpStatus.UNAUTHORIZED
+                    ? "Autenticación requerida o token inválido."
+                    : "No tiene permisos para realizar esta operación.";
+        }
         if (status == HttpStatus.SERVICE_UNAVAILABLE) {
             return "El servicio solicitado no está disponible en este momento. "
                     + "Intente nuevamente más tarde.";

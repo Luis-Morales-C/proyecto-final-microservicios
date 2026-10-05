@@ -30,27 +30,6 @@ database-empleados          database-departamentos
  PostgreSQL                    PostgreSQL
      |                             |
  empleados-db-data       departamentos-db-data
-
-El proyecto estará compuesto por múltiples microservicios independientes, un API Gateway, un message broker, bases de datos y herramientas de observabilidad.
-
-En el estado alcanzado en el Reto 2 se encuentran implementados los siguientes componentes:
-
-```text
-Cliente HTTP
-     |
-     +-----------------------------+
-     |                             |
- localhost:8080              localhost:8000
-     |                             |
-gestion-empleados --------HTTP----> gestion-departamentos
- Java 21 / Spring                  Python 3.11 / FastAPI
-     |                             |
-     | SQL                         | SQL
-     v                             v
-database-empleados          database-departamentos
- PostgreSQL                    PostgreSQL
-     |                             |
- empleados-db-data       departamentos-db-data
 ```
 
 Todos los servicios se comunican dentro de la red Docker `microservices-network`.
@@ -59,21 +38,17 @@ Todos los servicios se comunican dentro de la red Docker `microservices-network`
 
 ## Microservicios
 
-[svg](https://github.com/Luis-Morales-C/proyecto-final-microservicios/blob/main/README.md#microservicios)
-
-| **MicroservicioTecnologíaEstado** |                       |                                                                                                                                                                |
-| --------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gestión de empleados              | Spring Boot + Java 21 | 🟢 Reto 1 y Reto 2 completos — [Ver documentación](microservicios/gestion-empleados/README.md) |
-| Gestión de departamentos          | Python 3.11 + FastAPI | 🟢 Reto 2 completo — [Ver documentación](microservicios/gestion-departamentos/README.md) |
-| Autenticación                     | Pendiente             | 🔴                                                                                                                                                             |
-| Gestión de perfiles               | Pendiente             | 🔴                                                                                                                                                             |
-| Gestión de vacaciones             | Pendiente             | 🔴                                                                                                                                                             |
-| Notificaciones                    | Pendiente             | 🔴                                                                                                                                                             |
-| API Gateway                       | Pendiente             | 🔴                                                                                                                                                             |
+| Microservicio | Tecnología | Estado |
+|---------------|------------|--------|
+| API Gateway | Spring Cloud Gateway + Java 21 | 🟢 Reto 3 y 5 completos — Validación JWT y RBAC |
+| Gestión de empleados | Spring Boot + Java 21 | 🟢 Retos 1, 2, 4 completos — [Ver documentación](microservicios/gestion-empleados/README.md) |
+| Gestión de departamentos | Python 3.11 + FastAPI | 🟢 Reto 2 completo — [Ver documentación](microservicios/gestion-departamentos/README.md) |
+| Autenticación | .NET 8 + ASP.NET Core | 🟢 Reto 5 completo — [Ver documentación](microservicios/auth-service/README.md) |
+| Gestión de perfiles | Go 1.23 + Fiber | 🟢 Reto 4 completo |
+| Gestión de vacaciones | .NET 8 + ASP.NET Core | 🟢 Retos 4 y 5 completos — Scheduler implementado |
+| Notificaciones | Node.js 22 + Express | 🟢 Retos 4 y 5 completos — Integrado con eventos de seguridad |
 
 ## Tecnologías
-
-[svg](https://github.com/Luis-Morales-C/proyecto-final-microservicios/blob/main/README.md#tecnolog%C3%ADas)
 
 Las tecnologías utilizadas hasta el Reto 2 son:
 
@@ -96,43 +71,39 @@ Las tecnologías utilizadas hasta el Reto 2 son:
 
 ## Ejecución
 
-[svg](https://github.com/Luis-Morales-C/proyecto-final-microservicios/blob/main/README.md#ejecuci%C3%B3n)
-
 La solución del Reto 2 puede levantarse desde la raíz del proyecto mediante un único comando:
 
-```text
+```bash
 docker compose up --build
 ```
 
 Para detener el sistema conservando los volúmenes:
 
-```text
+```bash
 docker compose down
 ```
 
 Para detener el sistema y eliminar también los volúmenes:
 
-```text
+```bash
 docker compose down -v
 ```
 
-La configuración de las bases de datos se encuentra preparada mediante variables de entorno. El archivo `.env.example` sirve como referencia de configuración y las credenciales reales no deben versionarse en Git.
+La configuración de las bases de datos se encuentra preparada mediante variables de entorno. El archivo `.env` contiene las credenciales y no debe versionarse en Git.
 
 ### Verificación de arranque ordenado
-
-
 
 El proyecto utiliza `healthcheck` en los servicios de base de datos y en el microservicio de gestión de departamentos. Además, `gestion-empleados` utiliza `depends_on` con la condición `service_healthy`, garantizando que sus dependencias estén disponibles antes de iniciar.
 
 Para levantar el proyecto desde cero se ejecuta:
 
-```text
+```bash
 docker compose up --build
 ```
 
 Luego se puede verificar el estado de los contenedores mediante:
 
-```text
+```bash
 docker compose ps
 ```
 
@@ -173,14 +144,14 @@ Cada microservicio administra su propia base de datos PostgreSQL y su propio vol
 
 Los datos deben sobrevivir al ciclo:
 
-```text
+```bash
 docker compose down
 docker compose up -d
 ```
 
 y deben eliminarse cuando se utiliza:
 
-```text
+```bash
 docker compose down -v
 ```
 
@@ -291,7 +262,6 @@ docs/evidencias/reto2/integracion/R2-19-timeout-retry-503.png
 
 ### Swagger / OpenAPI
 
-
 `gestion-empleados`:
 
 ```text
@@ -324,19 +294,13 @@ docs/evidencias/reto2/swagger/R2-21-swagger-departamentos.png
 
 ### Evidencias del Reto 1
 
-
-
 El Reto 1 corresponde al estado histórico del servicio `gestion-empleados`, cuando los empleados se almacenaban en memoria mediante `ConcurrentHashMap`.
-
-
 
 **Ubicación:**
 
 ```text
 docs/evidencias/reto1/
 ```
-
-
 
 ```text
 R1-01-registro-empleado.png
@@ -350,14 +314,11 @@ R1-07-docker.png
 
 ### Evidencias del Reto 2
 
-
 ```text
 docs/evidencias/reto2/
 ```
 
-
 ## Estado al finalizar el Reto 2
-
 
 El Reto 2 deja implementados:
 
@@ -472,3 +433,169 @@ De esta manera se obtiene:
 - Protección frente a condiciones de carrera.
 - Respuesta `400 Bad Request` cuando se intenta registrar un email o `numeroEmpleado` duplicado.
 
+---
+
+## Reto 5 – Seguridad y Control de Acceso con JWT
+
+Implementa autenticación mediante JWT y protege todos los endpoints con control de acceso RBAC (basado en roles) y ABAC (basado en atributos).
+
+### Componentes Nuevos
+
+**Auth-Service (.NET 8)** — Puerto 8086
+- `POST /auth/login` - Retorna JWT de acceso
+- `POST /auth/recover-password` - Inicia recuperación de contraseña
+- `POST /auth/reset-password` - Establece/cambia contraseña con token
+- `POST /auth/change-password` - Cambio de contraseña (requiere JWT)
+- Consume: `empleado.creado`, `empleado.retirado`, `vacaciones.iniciadas`, `vacaciones.finalizadas`
+- Publica: `usuario.creado`, `cuenta.activada`, `cuenta.desactivada`, `usuario.recuperacion`
+
+**API Gateway** — Actualizado con JwtAuthenticationFilter
+- Valida JWT con HMAC-SHA256
+- Aplica reglas RBAC: rol `ADMIN` (acceso total), rol `USER` (solo lectura)
+- Aplica reglas ABAC: USER puede modificar solo su propio perfil (`PUT /perfiles/{id}` donde `id == token.sub`)
+- Propaga identidad a microservicios: `X-User-Id`, `X-User-Role`
+
+**Vacaciones-Service** — Actualizado con Scheduler
+- `VacationSchedulerWorker.cs` ejecuta cada 60 segundos (configurable)
+- Detecta períodos que inician y publica `vacaciones.iniciadas`
+- Detecta períodos que finalizan y publica `vacaciones.finalizadas`
+- Endpoints de desarrollo (solo con `ENABLE_DEV_ENDPOINTS=true`):
+  - `POST /vacaciones/{id}/forzar-inicio`
+  - `POST /vacaciones/{id}/forzar-fin`
+
+**Notificaciones-Service** — Actualizado
+- Consume eventos de seguridad: `usuario.creado`, `usuario.recuperacion`, `cuenta.activada`, `cuenta.desactivada`
+- Simula envío de correos con tokens de activación/recuperación
+
+### Estados de Cuenta
+
+| Estado | Login | Transiciones |
+|--------|-------|--------------|
+| `INACTIVA` | ❌ | → ACTIVA (reset-password) / → DESACTIVADA_PERMANENTE (retiro) |
+| `ACTIVA` | ✅ | → SUSPENDIDA_TEMPORAL (vacaciones) / → DESACTIVADA_PERMANENTE (retiro) |
+| `SUSPENDIDA_TEMPORAL` | ❌ | → ACTIVA (fin vacaciones) / → DESACTIVADA_PERMANENTE (retiro) |
+| `DESACTIVADA_PERMANENTE` | ❌ | Estado terminal (no reversible) |
+
+**Caso borde:** Si un empleado es retirado durante vacaciones, al finalizar el período NO se reactiva la cuenta (queda en `DESACTIVADA_PERMANENTE`).
+
+### Tokens JWT
+
+**Access Token** (60 min):
+```json
+{
+  "sub": "E001",
+  "role": "ADMIN",
+  "email": "juan@empresa.com",
+  "iss": "auth-service",
+  "exp": 1790806609
+}
+```
+
+**Reset Token** (60 min activación / 15 min recuperación):
+```json
+{
+  "sub": "E001",
+  "type": "RESET_PASSWORD",
+  "pv": "E3B0C44298FC1C14",
+  "iss": "auth-service",
+  "exp": 1790806655
+}
+```
+
+### Configuración (.env)
+
+```bash
+# JWT (clave simétrica HMAC-SHA256 - académico)
+JWT_SECRET=clave-academica-reto5-cambiar-en-produccion-0123456789
+JWT_ISSUER=auth-service
+ACCESS_TOKEN_MINUTES=60
+ACTIVATION_TOKEN_MINUTES=60
+RECOVERY_TOKEN_MINUTES=15
+
+# Administrador semilla (se crea automáticamente)
+ADMIN_EMPLEADO_ID=admin
+ADMIN_EMAIL=admin@empresa.com
+ADMIN_PASSWORD=Admin12345
+
+# Base de datos auth
+AUTH_DB=auth
+AUTH_DB_USER=auth
+AUTH_DB_PASSWORD=auth
+```
+
+### Flujo de Pruebas
+
+```bash
+# 1. Login admin
+curl -X POST http://localhost:8080/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@empresa.com","password":"Admin12345"}'
+
+# 2. Usar token (guardar en variable TOKEN_ADMIN)
+curl http://localhost:8080/empleados \
+  -H "Authorization: Bearer $TOKEN_ADMIN"
+
+# 3. Crear departamento y empleado (requiere ADMIN)
+curl -X POST http://localhost:8080/departamentos \
+  -H "Authorization: Bearer $TOKEN_ADMIN" \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"IT","nombre":"Tecnología","descripcion":"Desarrollo"}'
+
+curl -X POST http://localhost:8080/empleados \
+  -H "Authorization: Bearer $TOKEN_ADMIN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id":"E001",
+    "nombre":"Juan",
+    "apellido":"Perez",
+    "email":"juan@empresa.com",
+    "numeroEmpleado":"EMP-001",
+    "cargo":"Dev",
+    "area":"Backend",
+    "departamentoId":"IT",
+    "fechaIngreso":"2026-09-30",
+    "estado":"ACTIVO"
+  }'
+
+# 4. Verificar eventos en logs
+docker logs notificaciones-service --tail 20 | grep "SEGURIDAD"
+# Extraer el token de activación del log
+
+# 5. Activar cuenta del empleado
+curl -X POST http://localhost:8080/auth/reset-password \
+  -H 'Content-Type: application/json' \
+  -d '{"token":"TOKEN_DEL_LOG","newPassword":"Juan12345"}'
+
+# 6. Login como empleado
+curl -X POST http://localhost:8080/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"juan@empresa.com","password":"Juan12345"}'
+
+# 7. Probar RBAC (USER puede leer pero no escribir)
+curl http://localhost:8080/empleados -H "Authorization: Bearer $TOKEN_USER"  # OK
+curl -X DELETE http://localhost:8080/empleados/E001 -H "Authorization: Bearer $TOKEN_USER"  # 403
+
+# 8. Probar ABAC (USER puede modificar solo su propio perfil)
+curl -X PUT http://localhost:8080/perfiles/E001 \
+  -H "Authorization: Bearer $TOKEN_USER" \
+  -H 'Content-Type: application/json' \
+  -d '{"telefono":"555-1234","ciudad":"Bogotá"}'  # OK
+
+curl -X PUT http://localhost:8080/perfiles/E002 \
+  -H "Authorization: Bearer $TOKEN_USER" \
+  -H 'Content-Type: application/json' \
+  -d '{"telefono":"555-9999"}'  # 403
+```
+
+### Limitaciones Conocidas
+
+**Scheduler de Vacaciones:**
+- Funciona correctamente con 1 instancia del `vacaciones-service`
+- Con N instancias, cada una ejecuta su propio scheduler (N eventos duplicados)
+- Deduplicación en consumidores mitiga pero no elimina trabajo redundante
+- Solución: Lock distribuido (ShedLock) para Reto 31
+
+**Seguridad JWT:**
+- Usa clave simétrica HMAC-SHA256 (académico)
+- Producción requeriría RS256/ES256 o JWKS con rotación de claves
+- `JWT_SECRET` debe estar en gestor de secretos, no en `.env`
