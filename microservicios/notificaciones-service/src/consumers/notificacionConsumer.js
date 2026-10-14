@@ -15,7 +15,19 @@ const COLAS = [
     {
         nombre: "notificaciones.vacaciones",
         tipos: new Set([
-            "vacaciones.programadas"
+            "vacaciones.programadas",
+            "vacaciones.iniciadas",
+            "vacaciones.finalizadas"
+        ])
+    },
+    {
+        // Eventos emitidos por el auth-service (Reto 5)
+        nombre: "notificaciones.seguridad",
+        tipos: new Set([
+            "usuario.creado",
+            "usuario.recuperacion",
+            "cuenta.activada",
+            "cuenta.desactivada"
         ])
     }
 ];

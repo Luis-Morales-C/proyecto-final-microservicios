@@ -33,3 +33,11 @@ bin/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+# Reportes de pruebas (Reto 6 / CI)
+reports/
+coverage/
+TestResults/
+*.trx
+coverage*.xml
+cucumber*.json
+cucumber*.html

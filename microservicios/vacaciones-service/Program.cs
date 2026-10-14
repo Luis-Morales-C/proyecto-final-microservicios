@@ -4,6 +4,8 @@ using VacacionesService;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddSingleton<VacationSchedulerWorker>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<VacationSchedulerWorker>());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -12,6 +14,28 @@ builder.Services.AddSwaggerGen(options =>
         Title = "API de Gestión de Vacaciones",
         Version = "1.0.0",
         Description = "Programa, consulta y cancela períodos de vacaciones. Publica vacaciones.programadas y valida empleados mediante una réplica local alimentada por eventos."
+    });
+
+    options.AddSecurityDefinition("BearerAuth", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Description = "JWT obtenido en POST /auth/login"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecurityScheme
+        {
+            Reference = new OpenApiReference
+            {
+                Type = ReferenceType.SecurityScheme,
+                Id = "BearerAuth"
+            }
+        }] = Array.Empty<string>()
     });
 });
 
@@ -58,15 +82,14 @@ app.MapPost("/vacaciones", async (
     if (string.IsNullOrWhiteSpace(request.EmpleadoId))
         return Results.BadRequest(new ErrorResponse(true, "empleadoId es obligatorio"));
 
-    if (request.FechaFin <= request.FechaInicio)
-        return Results.BadRequest(new ErrorResponse(true, "fechaFin debe ser posterior a fechaInicio"));
-
     var today = DateOnly.FromDateTime(DateTime.UtcNow);
-    if (request.FechaInicio < today)
-        return Results.BadRequest(new ErrorResponse(true, "fechaInicio no puede estar en el pasado"));
+    var dateError = VacationRules.ValidarFechas(
+        request.FechaInicio, request.FechaFin, today);
+    if (dateError is not null)
+        return Results.BadRequest(new ErrorResponse(true, dateError));
 
     var employee = await repository.ObtenerEmpleadoActivoAsync(request.EmpleadoId, ct);
-    if (employee is null)
+    if (!VacationRules.EmpleadoPuedeProgramar(employee))
         return Results.BadRequest(new ErrorResponse(true, "El empleado no existe o se encuentra retirado"));
 
     var conflict = await repository.BuscarSolapamientoAsync(
@@ -134,5 +157,48 @@ app.MapDelete("/vacaciones/{id}", async (
 .Produces<Vacacion>()
 .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
 .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+
+if (app.Configuration.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
+{
+    // ⚠️ SOLO DESARROLLO: dispara las transiciones sin esperar al scheduler.
+    static bool EsAdmin(HttpRequest r) =>
+        string.Equals(r.Headers["X-User-Role"], "ADMIN", StringComparison.OrdinalIgnoreCase);
+
+    app.MapPost("/vacaciones/{id}/forzar-inicio", async (
+        string id, HttpRequest http, VacationRepository repository,
+        VacationSchedulerWorker scheduler, CancellationToken ct) =>
+    {
+        if (!EsAdmin(http)) return Results.Json(new ErrorResponse(true, "Requiere rol ADMIN"), statusCode: 403);
+
+        var v = await repository.ConsultarAsync(id, ct);
+        if (v is null) return Results.NotFound(new ErrorResponse(true, $"El período {id} no existe"));
+        if (v.Estado != EstadosVacaciones.Programada)
+            return Results.BadRequest(new ErrorResponse(true, "Solo se puede forzar el inicio de un período PROGRAMADA"));
+
+        return await scheduler.IniciarAsync(v, ct)
+            ? Results.Ok(v with { Estado = EstadosVacaciones.EnCurso })
+            : Results.Json(new ErrorResponse(true, "No se pudo publicar el evento"), statusCode: 503);
+    })
+    .WithName("ForzarInicioVacaciones").WithTags("Desarrollo")
+    .WithSummary("[DESARROLLO] Fuerza PROGRAMADA -> EN_CURSO (rol ADMIN)");
+
+    app.MapPost("/vacaciones/{id}/forzar-fin", async (
+        string id, HttpRequest http, VacationRepository repository,
+        VacationSchedulerWorker scheduler, CancellationToken ct) =>
+    {
+        if (!EsAdmin(http)) return Results.Json(new ErrorResponse(true, "Requiere rol ADMIN"), statusCode: 403);
+
+        var v = await repository.ConsultarAsync(id, ct);
+        if (v is null) return Results.NotFound(new ErrorResponse(true, $"El período {id} no existe"));
+        if (v.Estado != EstadosVacaciones.EnCurso)
+            return Results.BadRequest(new ErrorResponse(true, "Solo se puede forzar el fin de un período EN_CURSO"));
+
+        return await scheduler.FinalizarAsync(v, ct)
+            ? Results.Ok(v with { Estado = EstadosVacaciones.Finalizada })
+            : Results.Json(new ErrorResponse(true, "No se pudo publicar el evento"), statusCode: 503);
+    })
+    .WithName("ForzarFinVacaciones").WithTags("Desarrollo")
+    .WithSummary("[DESARROLLO] Fuerza EN_CURSO -> FINALIZADA (rol ADMIN)");
+}
 
 app.Run();

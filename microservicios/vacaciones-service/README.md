@@ -24,3 +24,30 @@ Se usa **réplica local por eventos**. El servicio consume `empleado.creado` y `
 Al crear un período se publica `vacaciones.programadas` en `rrhh.events`.
 
 Swagger UI: `/vacaciones/docs`.
+
+## Cancelación y trazabilidad
+
+Una cancelación no elimina el período. Se conserva:
+
+- `estado = CANCELADA`
+- `motivoCancelacion`
+- `fechaCancelacion`
+
+Si el empleado se retira, los períodos `PROGRAMADA` se cancelan automáticamente con el motivo `Cancelada automáticamente por retiro del empleado`. Los períodos `EN_CURSO` no se cancelan: terminan normalmente para publicar `vacaciones.finalizadas`; `auth-service` garantiza que una cuenta retirada permanentemente no se reactive.
+
+## Pruebas unitarias — Reto 6
+
+Las reglas puras viven en `VacationRules.cs` y se prueban con xUnit sin Docker ni base de datos.
+
+En Windows:
+
+```powershell
+.\run-tests.ps1
+```
+
+Reportes:
+
+```text
+reports/results.trx
+reports/coverage.xml
+```

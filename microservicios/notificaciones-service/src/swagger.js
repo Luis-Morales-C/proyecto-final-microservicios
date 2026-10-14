@@ -14,6 +14,10 @@ const swaggerDocument = {
         }
     ],
 
+    security: [
+        { BearerAuth: [] }
+    ],
+
     paths: {
         "/notificaciones": {
             get: {
@@ -71,6 +75,14 @@ const swaggerDocument = {
     },
 
     components: {
+        securitySchemes: {
+            BearerAuth: {
+                type: "http",
+                scheme: "bearer",
+                bearerFormat: "JWT",
+                description: "JWT obtenido en POST /auth/login"
+            }
+        },
         schemas: {
             Notificacion: {
                 type: "object",
@@ -84,7 +96,9 @@ const swaggerDocument = {
                         enum: [
                             "BIENVENIDA",
                             "DESVINCULACION",
-                            "VACACIONES"
+                            "VACACIONES",
+                            "SEGURIDAD",
+                            "CUENTA"
                         ]
                     },
                     destinatario: {
@@ -99,7 +113,8 @@ const swaggerDocument = {
                         format: "date-time"
                     },
                     empleadoId: {
-                        type: "string"
+                        type: "string",
+                        nullable: true
                     }
                 }
             }

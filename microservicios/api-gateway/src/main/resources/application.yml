@@ -20,6 +20,13 @@ spring:
           predicates:
             - Path=/empleados/**
 
+        # Springdoc redirige los recursos estáticos de la UI a /swagger-ui/**.
+        # Se enrutan al servicio de empleados sin exponer el puerto interno.
+        - id: empleados-swagger-assets
+          uri: ${EMPLEADOS_URL:http://empleados-service:8081}
+          predicates:
+            - Path=/swagger-ui/**
+
         - id: departamentos-service
           uri: ${DEPARTAMENTOS_URL:http://departamentos-service:8082}
           predicates:
@@ -40,6 +47,11 @@ spring:
           predicates:
             - Path=/vacaciones,/vacaciones/**
 
+        - id: auth-service
+          uri: ${AUTH_URL:http://auth-service:8086}
+          predicates:
+            - Path=/auth/**
+
       # No se agregan filtros de StripPrefix: las rutas internas de los servicios
       # ya usan sus prefijos, así que el gateway reenvía el path tal cual llega.
 
@@ -52,3 +64,8 @@ management:
   endpoint:
     health:
       show-details: never
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER:auth-service}
