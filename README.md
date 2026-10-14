@@ -8,8 +8,6 @@ Documentos de referencia del repositorio:
 
 - [`docs/arquitectura.md`](docs/arquitectura.md): arquitectura actual.
 - [`docs/eventos.md`](docs/eventos.md): eventos, colas y consumidores implementados.
-- [`docs/checklist-retos-1-6.md`](docs/checklist-retos-1-6.md): checklist de cumplimiento y pendientes de evidencia.
-- [`e2e-tests/README.md`](e2e-tests/README.md): ejecución de la suite BDD del Reto 6.
 - [`.env.example`](.env.example): variables necesarias para levantar el ecosistema.
 
 ## Arquitectura actual
