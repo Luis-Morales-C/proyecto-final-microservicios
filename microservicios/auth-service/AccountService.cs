@@ -10,6 +10,7 @@ public sealed class AccountService(
     EventPublisher publisher,
     NpgsqlDataSource dataSource,
     IConfiguration configuration,
+    DevTokenStore devTokens,
     ILogger<AccountService> logger)
 {
     private TimeSpan AccessLifetime =>
@@ -97,6 +98,8 @@ public sealed class AccountService(
             publisher.Publish(
                 "usuario.recuperacion",
                 new UsuarioRecuperacionData(user.Email, token, expiraEn));
+            if (configuration.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
+                devTokens.Save(user.Email, token, expiraEn);
         }
         catch (Exception ex)
         {
@@ -156,6 +159,8 @@ public sealed class AccountService(
 
         await tx.CommitAsync(ct);
 
+        if (configuration.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
+            devTokens.Remove(user.Email);
         logger.LogInformation(
             "Contraseña establecida para {EmpleadoId} (activación inicial: {Activate})",
             user.EmpleadoId, activate);

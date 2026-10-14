@@ -385,15 +385,21 @@ public sealed class EmployeeEventWorker(
                  * No eliminamos las vacaciones físicamente
                  * porque queremos preservar su historial.
                  *
-                 * PROGRAMADA / EN_CURSO → CANCELADA
+                 * PROGRAMADA → CANCELADA.
                  *
+                 * EN_CURSO se conserva hasta FINALIZADA porque el Reto 5
+                 * exige demostrar que vacaciones.finalizadas NO reactiva
+                 * una cuenta retirada de forma permanente.
                  * FINALIZADA y CANCELADA permanecen intactas.
                  */
                 await using var cancelVacations =
                     new NpgsqlCommand(
                         """
                         UPDATE vacaciones
-                        SET estado = 'CANCELADA'
+                        SET estado = 'CANCELADA',
+                            motivo_cancelacion =
+                                'Cancelada automáticamente por retiro del empleado',
+                            fecha_cancelacion = NOW()
                         WHERE empleado_id = @empleadoId
                           AND estado = 'PROGRAMADA'
                         """,

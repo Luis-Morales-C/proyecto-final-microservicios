@@ -160,22 +160,46 @@ func (r *Repository) ProcesarEvento(ctx context.Context, evento model.EventoEmpl
 		if empleadoID == "" || evento.Data.Nombre == "" || evento.Data.Email == "" {
 			return false, fmt.Errorf("evento empleado.actualizado incompleto")
 		}
+
+		// UPSERT: si por una caída anterior se perdió empleado.creado, un
+		// empleado.actualizado también puede reconstruir el perfil mínimo.
+		profileID, uuidErr := newUUID()
+		if uuidErr != nil {
+			return false, uuidErr
+		}
 		_, err = tx.ExecContext(ctx, `
-			UPDATE perfiles
-			SET nombre = $2, email = $3
-			WHERE empleado_id = $1`,
-			empleadoID, evento.Data.Nombre, evento.Data.Email,
+			INSERT INTO perfiles (id, empleado_id, nombre, email)
+			VALUES ($1::uuid, $2, $3, $4)
+			ON CONFLICT (empleado_id) DO UPDATE
+			SET nombre = EXCLUDED.nombre,
+				email = EXCLUDED.email`,
+			profileID, empleadoID, evento.Data.Nombre, evento.Data.Email,
 		)
 
 	case "empleado.retirado":
-		if empleadoID == "" {
+		if empleadoID == "" || evento.Data.Nombre == "" || evento.Data.Email == "" {
 			return false, fmt.Errorf("evento empleado.retirado incompleto")
+		}
+
+		// UPSERT: el retiro debe dejar una traza consultable incluso si el
+		// perfil no existía (por ejemplo, datos históricos previos al Reto 4).
+		profileID, uuidErr := newUUID()
+		if uuidErr != nil {
+			return false, uuidErr
 		}
 		now := time.Now().UTC()
 		_, err = tx.ExecContext(ctx, `
-			UPDATE perfiles
-			SET archivado = TRUE, fecha_archivado = $2
-			WHERE empleado_id = $1`, empleadoID, now)
+			INSERT INTO perfiles (
+				id, empleado_id, nombre, email, archivado, fecha_archivado
+			)
+			VALUES ($1::uuid, $2, $3, $4, TRUE, $5)
+			ON CONFLICT (empleado_id) DO UPDATE
+			SET nombre = EXCLUDED.nombre,
+				email = EXCLUDED.email,
+				archivado = TRUE,
+				fecha_archivado = EXCLUDED.fecha_archivado`,
+			profileID, empleadoID, evento.Data.Nombre, evento.Data.Email, now,
+		)
 
 	default:
 		return false, fmt.Errorf("tipo de evento no soportado: %s", evento.Type)

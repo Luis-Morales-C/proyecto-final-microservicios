@@ -18,6 +18,7 @@ public sealed class AccountEventHandler(
     TokenService tokens,
     EventPublisher publisher,
     IConfiguration configuration,
+    DevTokenStore devTokens,
     ILogger<AccountEventHandler> logger)
 {
     public static readonly string[] HandledTypes =
@@ -112,6 +113,8 @@ public sealed class AccountEventHandler(
             "usuario.creado",
             new UsuarioCreadoData(user.EmpleadoId, user.Email, token, expiraEn));
 
+        if (configuration.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
+            devTokens.Save(user.Email, token, expiraEn);
         logger.LogInformation(
             "Cuenta creada (INACTIVA) para {EmpleadoId}. Evento={EventId}",
             user.EmpleadoId, envelope.Id);
@@ -143,6 +146,8 @@ public sealed class AccountEventHandler(
         await users.SetEstadoAsync(
             conn, tx, user.EmpleadoId, EstadoCuenta.DesactivadaPermanente, ct);
 
+        if (configuration.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
+            devTokens.Remove(user.Email);
         publisher.Publish(
             "cuenta.desactivada",
             new CuentaDesactivadaData(

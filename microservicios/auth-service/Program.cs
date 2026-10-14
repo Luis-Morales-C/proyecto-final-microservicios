@@ -33,6 +33,7 @@ builder.Services.AddSingleton<UserRepository>();
 builder.Services.AddSingleton<EventPublisher>();
 builder.Services.AddSingleton<AccountService>();
 builder.Services.AddSingleton<AccountEventHandler>();
+builder.Services.AddSingleton<DevTokenStore>();
 builder.Services.AddHostedService<AuthEventWorker>();
 
 // ---------- Autenticación / autorización (solo para /auth/change-password) ----------
@@ -50,6 +51,10 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AccessToken", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("role")
+        .RequireAssertion(ctx => !ctx.User.HasClaim(c => c.Type == "type")));
+    options.AddPolicy("AdminOnly", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireClaim("role", Roles.Admin)
         .RequireAssertion(ctx => !ctx.User.HasClaim(c => c.Type == "type")));
 });
 
@@ -92,8 +97,15 @@ await DatabaseInitializer.SeedAdminAsync(
     config,
     startupLogger);
 
-app.UseSwagger();
-app.UseSwaggerUI(o => o.SwaggerEndpoint("/swagger/v1/swagger.json", "Auth Service v1"));
+app.UseSwagger(options =>
+{
+    options.RouteTemplate = "auth/swagger/{documentName}/swagger.json";
+});
+app.UseSwaggerUI(options =>
+{
+    options.RoutePrefix = "auth/docs";
+    options.SwaggerEndpoint("/auth/swagger/v1/swagger.json", "Auth Service v1");
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -143,6 +155,21 @@ auth.MapPost("/change-password",
     .ProducesProblem(StatusCodes.Status401Unauthorized)
     .ProducesProblem(StatusCodes.Status403Forbidden);
 
+if (config.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
+{
+    auth.MapGet("/test/reset-token", (
+            string email,
+            DevTokenStore store) =>
+        {
+            var token = store.Get(email);
+            return token is null
+                ? Results.NotFound(new { error = true, mensaje = "No hay token disponible" })
+                : Results.Ok(token);
+        })
+        .RequireAuthorization("AdminOnly")
+        .WithTags("Desarrollo")
+        .WithSummary("[DESARROLLO/E2E] Obtiene el último token de activación/recuperación");
+}
 app.Run();
 
 /// <summary>Marca con candado en Swagger los endpoints que exigen JWT.</summary>

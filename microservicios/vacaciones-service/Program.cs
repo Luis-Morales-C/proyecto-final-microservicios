@@ -15,6 +15,28 @@ builder.Services.AddSwaggerGen(options =>
         Version = "1.0.0",
         Description = "Programa, consulta y cancela períodos de vacaciones. Publica vacaciones.programadas y valida empleados mediante una réplica local alimentada por eventos."
     });
+
+    options.AddSecurityDefinition("BearerAuth", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Description = "JWT obtenido en POST /auth/login"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecurityScheme
+        {
+            Reference = new OpenApiReference
+            {
+                Type = ReferenceType.SecurityScheme,
+                Id = "BearerAuth"
+            }
+        }] = Array.Empty<string>()
+    });
 });
 
 var dbHost = builder.Configuration["DB_HOST"] ?? "database-vacaciones";
@@ -62,13 +84,14 @@ app.MapPost("/vacaciones", async (
 
     if (request.FechaFin < request.FechaInicio)
         return Results.BadRequest(new ErrorResponse(true, "fechaFin no puede ser anterior a fechaInicio"));
-
     var today = DateOnly.FromDateTime(DateTime.UtcNow);
-    if (request.FechaInicio < today)
-        return Results.BadRequest(new ErrorResponse(true, "fechaInicio no puede estar en el pasado"));
+    var dateError = VacationRules.ValidarFechas(
+        request.FechaInicio, request.FechaFin, today);
+    if (dateError is not null)
+        return Results.BadRequest(new ErrorResponse(true, dateError));
 
     var employee = await repository.ObtenerEmpleadoActivoAsync(request.EmpleadoId, ct);
-    if (employee is null)
+    if (!VacationRules.EmpleadoPuedeProgramar(employee))
         return Results.BadRequest(new ErrorResponse(true, "El empleado no existe o se encuentra retirado"));
 
     var conflict = await repository.BuscarSolapamientoAsync(

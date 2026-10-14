@@ -3,7 +3,7 @@
 Proveedor de identidad del ecosistema (Reto 5, parte 1). .NET 8 / ASP.NET Core, PostgreSQL (`database-auth`) y RabbitMQ.
 Puerto interno **8086** (el 8085 ya lo usa `vacaciones-service`).
 
-Swagger UI: `http://localhost:8086/swagger` (botón **Authorize** → pegar el token sin `Bearer`).
+Swagger UI a través del Gateway: `http://localhost:8080/auth/docs` (botón **Authorize** → pegar el token sin `Bearer`).
 
 ## Endpoints
 
@@ -62,15 +62,16 @@ Deduplicación por `id` en la tabla `eventos_procesados`.
 
 ```bash
 # 1. Login del admin semilla
-curl -s localhost:8086/auth/login -H 'Content-Type: application/json' \
+curl -s localhost:8080/auth/login -H 'Content-Type: application/json' \
   -d '{"email":"admin@empresa.com","password":"Admin12345"}'
 
 # 2. Tras crear un empleado, tomar tokenActivacion del log de notificaciones y:
-curl -s localhost:8086/auth/reset-password -H 'Content-Type: application/json' \
+curl -s localhost:8080/auth/reset-password -H 'Content-Type: application/json' \
   -d '{"token":"<tokenActivacion>","newPassword":"Clave12345"}'
 
 # 3. Recuperación
-curl -s localhost:8086/auth/recover-password -H 'Content-Type: application/json' \
+curl -s localhost:8080/auth/recover-password -H 'Content-Type: application/json' \
+  -d '{"email":"juan.perez@empresa.com"}'
   -d '{"email":"juan.perez@empresa.com"}'
 ```
 

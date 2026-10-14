@@ -1,0 +1,20 @@
+{
+  "name": "e2e-tests",
+  "version": "1.0.0",
+  "description": "Suite BDD/E2E de los retos 5 y 6",
+  "scripts": {
+    "test": "node support/prepare-reports.js && cucumber-js",
+    "test:smoke": "node support/prepare-reports.js && cucumber-js features/smoke.feature",
+    "test:security": "node support/prepare-reports.js && cucumber-js features/seguridad.feature",
+    "test:onboarding": "node support/prepare-reports.js && cucumber-js features/onboarding.feature",
+    "test:vacaciones": "node support/prepare-reports.js && cucumber-js features/vacaciones.feature",
+    "test:offboarding": "node support/prepare-reports.js && cucumber-js features/offboarding.feature"
+  },
+  "keywords": ["cucumber", "bdd", "microservices"],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@cucumber/cucumber": "^13.3.0"
+  }
+}

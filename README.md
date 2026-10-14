@@ -1,18 +1,28 @@
 # Proyecto Final - Microservicios
 
-## Descripción
+## Estado actual
 
-Sistema distribuido basado en una arquitectura de microservicios, desarrollado de manera incremental a través de los retos del curso.
+El repositorio contiene la evolución acumulada de los Retos 1 a 6. Los Retos 1 a 5 están implementados a nivel funcional; el Reto 6 incorpora la estrategia de pruebas automatizadas y requiere ejecutar las suites en la máquina del equipo para generar las evidencias finales.
 
-En el Reto 1 se construyó el microservicio `gestion-empleados`, encargado del registro y consulta básica de empleados, utilizando almacenamiento en memoria.
+Documentos de referencia del repositorio:
 
-En el Reto 2 el sistema evolucionó hacia una arquitectura distribuida con dos servicios de negocio independientes, bases de datos PostgreSQL separadas, persistencia mediante volúmenes Docker, comunicación REST, configuración mediante variables de entorno, health checks y documentación OpenAPI.
+- [`docs/arquitectura.md`](docs/arquitectura.md): arquitectura actual.
+- [`docs/eventos.md`](docs/eventos.md): eventos, colas y consumidores implementados.
+- [`.env.example`](.env.example): variables necesarias para levantar el ecosistema.
 
-## Arquitectura
+## Arquitectura actual
 
-El proyecto estará compuesto por múltiples microservicios independientes, un API Gateway, un message broker, bases de datos y herramientas de observabilidad.
+El cliente accede únicamente por el API Gateway en `http://localhost:8080`. Los puertos internos de los microservicios no se publican al host. RabbitMQ expone solo su interfaz administrativa en `http://localhost:15672`.
 
-En el estado alcanzado en el Reto 2 se encuentran implementados los siguientes componentes:
+| Servicio | Lenguaje / stack | Puerto interno | Función |
+|---|---|---:|---|
+| API Gateway | Java 21 / Spring Cloud Gateway | 8080 | Punto de entrada, validación JWT, RBAC/propiedad y enrutamiento |
+| Gestión de empleados | Java 21 / Spring Boot | 8081 | Empleados, auditoría, eventos y Circuit Breaker |
+| Gestión de departamentos | Python / FastAPI | 8082 | Departamentos |
+| Notificaciones | Node.js / Express | 8083 | Consumidor reactivo e historial de notificaciones |
+| Perfiles | Go | 8084 | Perfil sincronizado por eventos + REST |
+| Vacaciones | C# / ASP.NET Core 8 | 8085 | Períodos, scheduler y eventos |
+| Auth | C# / ASP.NET Core 8 | 8086 | Identidad, contraseñas y JWT |
 
 ```text
 Cliente HTTP
@@ -32,11 +42,26 @@ database-empleados          database-departamentos
  empleados-db-data       departamentos-db-data
 ```
 
-Todos los servicios se comunican dentro de la red Docker `microservices-network`.
+Cada servicio persistente posee su propia base PostgreSQL. La comunicación síncrona entre servicios se limita principalmente a Empleados -> Departamentos; el resto del ciclo de vida se propaga mediante RabbitMQ y el exchange `rrhh.events`.
 
-`gestion-empleados` no accede directamente a la base de datos de departamentos. Cuando necesita validar un `departamentoId`, realiza una petición HTTP al microservicio `gestion-departamentos`.
+## Puesta en marcha
 
-## Microservicios
+1. Copie `.env.example` como `.env` y ajuste las credenciales si es necesario.
+2. Levante el sistema:
+
+```powershell
+docker compose up -d --build
+```
+
+3. Compruebe el estado:
+
+```powershell
+docker compose ps -a
+```
+
+4. El Gateway queda en `http://localhost:8080` y RabbitMQ Management en `http://localhost:15672`.
+
+4. El Gateway queda en `http://localhost:8080` y RabbitMQ Management en `http://localhost:15672`.
 
 | Microservicio | Tecnología | Estado |
 |---------------|------------|--------|
@@ -47,6 +72,22 @@ Todos los servicios se comunican dentro de la red Docker `microservices-network`
 | Gestión de perfiles | Go 1.23 + Fiber | 🟢 Reto 4 completo |
 | Gestión de vacaciones | .NET 8 + ASP.NET Core | 🟢 Retos 4 y 5 completos — Scheduler implementado |
 | Notificaciones | Node.js 22 + Express | 🟢 Retos 4 y 5 completos — Integrado con eventos de seguridad |
+
+Para las pruebas E2E del Reto 6 use temporalmente `ENABLE_DEV_ENDPOINTS=true`; en uso normal manténgalo en `false`.
+
+## Pruebas automatizadas — Reto 6
+
+| Suite | Comando | Resultados | Cobertura |
+|---|---|---|---|
+| Empleados unitarias + integración | `cd microservicios/gestion-empleados` + `./mvnw.cmd verify` | `target/surefire-reports/*.xml` | `target/site/jacoco/jacoco.xml` |
+| Vacaciones unitarias | `cd microservicios/vacaciones-service` + `./run-tests.ps1` | `reports/results.trx` | `reports/coverage.xml` |
+| BDD / E2E | `cd e2e-tests` + `npm ci` + `npm test` | `reports/junit.xml`, `reports/cucumber.json`, `reports/cucumber.html` | — |
+
+Los reportes se generan localmente y no se versionan; serán consumidos por el pipeline del reto siguiente.
+
+## Documentación histórica
+
+Las secciones siguientes conservan decisiones y evidencias de los retos anteriores. Algunas URLs directas de microservicios pertenecen al momento histórico del reto correspondiente; en el estado actual toda API de negocio se consume a través del Gateway.
 
 ## Tecnologías
 
