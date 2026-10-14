@@ -14,6 +14,10 @@ const swaggerDocument = {
         }
     ],
 
+    security: [
+        { BearerAuth: [] }
+    ],
+
     paths: {
         "/notificaciones": {
             get: {
@@ -71,6 +75,14 @@ const swaggerDocument = {
     },
 
     components: {
+        securitySchemes: {
+            BearerAuth: {
+                type: "http",
+                scheme: "bearer",
+                bearerFormat: "JWT",
+                description: "JWT obtenido en POST /auth/login"
+            }
+        },
         schemas: {
             Notificacion: {
                 type: "object",

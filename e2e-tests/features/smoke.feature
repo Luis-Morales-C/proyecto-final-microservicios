@@ -1,7 +1,10 @@
 # language: es
 
-Característica: Disponibilidad básica del sistema
+Característica: Verificación del sistema
+  Como equipo de desarrollo
+  Quiero comprobar que el punto de entrada está disponible
+  Para ejecutar el resto de la suite sobre un sistema operativo
 
-  Escenario: El API Gateway está disponible
-    Cuando consulto el API Gateway
-    Entonces el sistema debe responder
+  Escenario: El sistema responde correctamente
+    Dado que el sistema está desplegado y operativo
+    Entonces la respuesta debe tener código 200

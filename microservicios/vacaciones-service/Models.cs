@@ -20,7 +20,9 @@ public sealed record Vacacion(
     DateOnly FechaInicio,
     DateOnly FechaFin,
     string Estado,
-    DateTimeOffset FechaCreacion
+    DateTimeOffset FechaCreacion,
+    string? MotivoCancelacion = null,
+    DateTimeOffset? FechaCancelacion = null
 );
 
 public sealed record EmpleadoReplica(

@@ -1,163 +1,85 @@
-import { Given, When, Then } from "@cucumber/cucumber";
-import assert from "node:assert";
+import { When } from "@cucumber/cucumber";
+import { bearer, requestJson } from "../support/http.js";
+import {
+    autenticarAdmin,
+    crearEmpleado,
+    crearDepartamento,
+    esperarPerfil
+} from "../support/fixtures.js";
 
-When(
-    "intento acceder a un recurso protegido sin autenticación",
-    async function () {
-        this.response = await fetch(
-            `${this.baseUrl}/empleados`
-        );
-    }
-);
+When("consulto la lista de empleados sin token de autenticación", async function () {
+    const result = await requestJson(this.baseUrl, "/empleados");
+    this.response = result.response;
+    this.responseBody = result.body;
+});
 
-When(
-    "intento acceder a un recurso protegido con un token inválido",
-    async function () {
-        this.response = await fetch(
-            `${this.baseUrl}/empleados`,
-            {
-                headers: {
-                    Authorization: "Bearer token-invalido"
-                }
-            }
-        );
-    }
-);
+When("consulto la lista de empleados con un token inválido", async function () {
+    const result = await requestJson(this.baseUrl, "/empleados", {
+        headers: bearer("token-invalido")
+    });
+    this.response = result.response;
+    this.responseBody = result.body;
+});
 
-Then(
-    "la respuesta debe tener código {int}",
-    function (codigoEsperado) {
-        assert.strictEqual(
-            this.response.status,
-            codigoEsperado
-        );
-    }
-);
+When("consulto la lista de empleados", async function () {
+    const result = await requestJson(this.baseUrl, "/empleados", {
+        headers: bearer(this.token)
+    });
+    this.response = result.response;
+    this.responseBody = result.body;
+});
 
-Given(
-    "que estoy autenticado como USER",
-    async function () {
-        const response = await fetch(
-            `${this.baseUrl}/auth/login`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    email: "laura@empresa.com",
-                    password: "Laura123!"
-                })
-            }
-        );
+When("intento retirar mi empleado como USER", async function () {
+    const result = await requestJson(this.baseUrl, `/empleados/${this.empleadoId}`, {
+        method: "DELETE",
+        headers: bearer(this.token)
+    });
+    this.response = result.response;
+    this.responseBody = result.body;
+});
 
-        assert.strictEqual(response.status, 200);
+When("actualizo mi propio perfil", async function () {
+    await esperarPerfil(this, this.empleadoId);
 
-        const body = await response.json();
+    const result = await requestJson(this.baseUrl, `/perfiles/${this.empleadoId}`, {
+        method: "PUT",
+        headers: bearer(this.token),
+        body: {
+            telefono: "3001234567",
+            ciudad: "Armenia",
+            biografia: "Perfil actualizado por prueba BDD"
+        }
+    });
+    this.response = result.response;
+    this.responseBody = result.body;
+});
 
-        this.token = body.accessToken;
-        this.empleadoId = "E0021";
-    }
-);
+When("intento actualizar el perfil de otro empleado", async function () {
+    await autenticarAdmin(this);
+    const otro = await crearEmpleado(this);
+    await esperarPerfil(this, otro.empleadoId);
 
-When(
-    "consulto mi propio empleado",
-    async function () {
-        this.response = await fetch(
-            `${this.baseUrl}/empleados/${this.empleadoId}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${this.token}`
-                }
-            }
-        );
-    }
-);
+    const result = await requestJson(this.baseUrl, `/perfiles/${otro.empleadoId}`, {
+        method: "PUT",
+        headers: bearer(this.token),
+        body: { ciudad: "Armenia" }
+    });
+    this.response = result.response;
+    this.responseBody = result.body;
+});
 
-When(
-    "intento modificar un empleado",
-    async function () {
-        this.response = await fetch(
-            `${this.baseUrl}/empleados/${this.empleadoId}`,
-            {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${this.token}`
-                },
-                body: JSON.stringify({
-                    nombre: "Laura Modificada"
-                })
-            }
-        );
-    }
-);
-
-Given(
-    "que estoy autenticado como ADMIN",
-    async function () {
-        const response = await fetch(
-            `${this.baseUrl}/auth/login`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    email: process.env.ADMIN_EMAIL,
-                    password: process.env.ADMIN_PASSWORD
-                })
-            }
-        );
-
-        assert.strictEqual(
-            response.status,
-            200,
-            "No fue posible iniciar sesión como ADMIN"
-        );
-
-        const body = await response.json();
-
-        this.token = body.accessToken;
-        this.empleadoId = "E0021";
-    }
-);
-
-When(
-    "modifico un empleado",
-    async function () {
-        this.response = await fetch(
-            `${this.baseUrl}/empleados/${this.empleadoId}`,
-            {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${this.token}`
-                },
-                body: JSON.stringify({
-                    nombre: "Laura",
-                    apellido: "Cardenas",
-                    email: "laura@empresa.com",
-                    cargo: "Analista",
-                    area: "Recursos Humanos",
-                    departamentoId: "RRHH"
-                })
-            }
-        );
-    }
-);
-
-Then(
-    "la operación debe ser permitida",
-    function () {
-        assert.notStrictEqual(
-            this.response.status,
-            401
-        );
-
-        assert.notStrictEqual(
-            this.response.status,
-            403
-        );
-    }
-);
+When("creo un departamento como ADMIN", async function () {
+    await autenticarAdmin(this);
+    const id = `A${Date.now().toString(36).toUpperCase()}`.slice(0, 20);
+    const result = await requestJson(this.baseUrl, "/departamentos", {
+        method: "POST",
+        headers: bearer(this.adminToken),
+        body: {
+            id,
+            nombre: "Departamento Admin",
+            descripcion: "Creado por escenario de autorización ADMIN"
+        }
+    });
+    this.response = result.response;
+    this.responseBody = result.body;
+});

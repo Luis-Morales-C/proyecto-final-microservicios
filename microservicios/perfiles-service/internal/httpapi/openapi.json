@@ -6,14 +6,18 @@
     "description": "Perfiles creados y sincronizados de forma asíncrona a partir de eventos de empleados. Los campos personales editables se modifican por REST."
   },
   "servers": [
-    { "url": "/" }
+    {
+      "url": "/"
+    }
   ],
   "paths": {
     "/perfiles": {
       "get": {
         "summary": "Listar todos los perfiles",
         "description": "Retorna perfiles activos y archivados para conservar trazabilidad.",
-        "tags": ["Perfiles"],
+        "tags": [
+          "Perfiles"
+        ],
         "responses": {
           "200": {
             "description": "Listado de perfiles",
@@ -21,7 +25,9 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/Perfil" }
+                  "items": {
+                    "$ref": "#/components/schemas/Perfil"
+                  }
                 }
               }
             }
@@ -30,7 +36,9 @@
             "description": "Error interno",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -40,13 +48,17 @@
     "/perfiles/{empleadoId}": {
       "get": {
         "summary": "Consultar perfil por empleado",
-        "tags": ["Perfiles"],
+        "tags": [
+          "Perfiles"
+        ],
         "parameters": [
           {
             "name": "empleadoId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "example": "E001"
           }
         ],
@@ -55,7 +67,9 @@
             "description": "Perfil encontrado",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Perfil" }
+                "schema": {
+                  "$ref": "#/components/schemas/Perfil"
+                }
               }
             }
           },
@@ -63,7 +77,9 @@
             "description": "Perfil no existe",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -71,7 +87,9 @@
             "description": "Error interno",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -80,13 +98,17 @@
       "put": {
         "summary": "Actualizar datos editables del perfil",
         "description": "Permite modificar teléfono, dirección, ciudad y biografía. Nombre y email se sincronizan desde empleado.actualizado.",
-        "tags": ["Perfiles"],
+        "tags": [
+          "Perfiles"
+        ],
         "parameters": [
           {
             "name": "empleadoId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "example": "E001"
           }
         ],
@@ -94,7 +116,9 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ActualizarPerfil" }
+              "schema": {
+                "$ref": "#/components/schemas/ActualizarPerfil"
+              }
             }
           }
         },
@@ -103,7 +127,9 @@
             "description": "Perfil actualizado",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Perfil" }
+                "schema": {
+                  "$ref": "#/components/schemas/Perfil"
+                }
               }
             }
           },
@@ -111,7 +137,9 @@
             "description": "Solicitud inválida",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -119,7 +147,9 @@
             "description": "Perfil no existe",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -127,7 +157,9 @@
             "description": "Perfil archivado; no admite modificaciones",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -135,7 +167,9 @@
             "description": "Error interno",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -160,17 +194,52 @@
           "archivado"
         ],
         "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "empleadoId": { "type": "string", "example": "E001" },
-          "nombre": { "type": "string", "example": "Juan" },
-          "email": { "type": "string", "format": "email", "example": "juan@empresa.com" },
-          "telefono": { "type": "string", "example": "3001234567" },
-          "direccion": { "type": "string", "example": "Carrera 15 # 12-34" },
-          "ciudad": { "type": "string", "example": "Armenia" },
-          "biografia": { "type": "string", "example": "Ingeniero de sistemas" },
-          "fechaCreacion": { "type": "string", "format": "date-time" },
-          "archivado": { "type": "boolean", "example": false },
-          "fechaArchivado": { "type": "string", "format": "date-time", "nullable": true }
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "empleadoId": {
+            "type": "string",
+            "example": "E001"
+          },
+          "nombre": {
+            "type": "string",
+            "example": "Juan"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "juan@empresa.com"
+          },
+          "telefono": {
+            "type": "string",
+            "example": "3001234567"
+          },
+          "direccion": {
+            "type": "string",
+            "example": "Carrera 15 # 12-34"
+          },
+          "ciudad": {
+            "type": "string",
+            "example": "Armenia"
+          },
+          "biografia": {
+            "type": "string",
+            "example": "Ingeniero de sistemas"
+          },
+          "fechaCreacion": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archivado": {
+            "type": "boolean",
+            "example": false
+          },
+          "fechaArchivado": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
         }
       },
       "ActualizarPerfil": {
@@ -178,19 +247,49 @@
         "minProperties": 1,
         "additionalProperties": false,
         "properties": {
-          "telefono": { "type": "string", "example": "3001234567" },
-          "direccion": { "type": "string", "example": "Carrera 15 # 12-34" },
-          "ciudad": { "type": "string", "example": "Armenia" },
-          "biografia": { "type": "string", "example": "Ingeniero de sistemas" }
+          "telefono": {
+            "type": "string",
+            "example": "3001234567"
+          },
+          "direccion": {
+            "type": "string",
+            "example": "Carrera 15 # 12-34"
+          },
+          "ciudad": {
+            "type": "string",
+            "example": "Armenia"
+          },
+          "biografia": {
+            "type": "string",
+            "example": "Ingeniero de sistemas"
+          }
         }
       },
       "Error": {
         "type": "object",
         "properties": {
-          "error": { "type": "boolean", "example": true },
-          "mensaje": { "type": "string" }
+          "error": {
+            "type": "boolean",
+            "example": true
+          },
+          "mensaje": {
+            "type": "string"
+          }
         }
       }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT obtenido en POST /auth/login"
+      }
     }
-  }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ]
 }

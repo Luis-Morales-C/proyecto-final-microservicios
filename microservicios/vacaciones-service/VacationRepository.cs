@@ -46,7 +46,7 @@ public sealed class VacationRepository(NpgsqlDataSource dataSource)
         CancellationToken cancellationToken)
     {
         await using var command = dataSource.CreateCommand("""
-            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion
+            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion, motivo_cancelacion, fecha_cancelacion
             FROM vacaciones
             WHERE empleado_id = @empleadoId
               AND estado IN ('PROGRAMADA', 'EN_CURSO')
@@ -73,8 +73,14 @@ public sealed class VacationRepository(NpgsqlDataSource dataSource)
         var now = DateTimeOffset.UtcNow;
 
         await using var command = dataSource.CreateCommand("""
-            INSERT INTO vacaciones (id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion)
-            VALUES (@id, @empleadoId, @fechaInicio, @fechaFin, @estado, @fechaCreacion)
+            INSERT INTO vacaciones (
+                id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion,
+                motivo_cancelacion, fecha_cancelacion
+            )
+            VALUES (
+                @id, @empleadoId, @fechaInicio, @fechaFin, @estado, @fechaCreacion,
+                NULL, NULL
+            )
             """);
         command.Parameters.AddWithValue("id", id);
         command.Parameters.AddWithValue("empleadoId", empleadoId);
@@ -90,7 +96,7 @@ public sealed class VacationRepository(NpgsqlDataSource dataSource)
     public async Task<Vacacion?> ConsultarAsync(string id, CancellationToken cancellationToken)
     {
         await using var command = dataSource.CreateCommand("""
-            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion
+            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion, motivo_cancelacion, fecha_cancelacion
             FROM vacaciones
             WHERE id = @id
             """);
@@ -105,7 +111,7 @@ public sealed class VacationRepository(NpgsqlDataSource dataSource)
         CancellationToken cancellationToken)
     {
         var sql = """
-            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion
+            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion, motivo_cancelacion, fecha_cancelacion
             FROM vacaciones
             """;
         if (!string.IsNullOrWhiteSpace(empleadoId))
@@ -139,13 +145,24 @@ public sealed class VacationRepository(NpgsqlDataSource dataSource)
 
         await using var command = dataSource.CreateCommand("""
             UPDATE vacaciones
-            SET estado = 'CANCELADA'
+            SET estado = 'CANCELADA',
+                motivo_cancelacion = @motivo,
+                fecha_cancelacion = @fechaCancelacion
             WHERE id = @id AND estado = 'PROGRAMADA'
             """);
+        var fechaCancelacion = DateTimeOffset.UtcNow;
+        const string motivo = "Cancelada manualmente";
         command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("motivo", motivo);
+        command.Parameters.AddWithValue("fechaCancelacion", fechaCancelacion);
         await command.ExecuteNonQueryAsync(cancellationToken);
 
-        return (vacation with { Estado = EstadosVacaciones.Cancelada }, null);
+        return (vacation with
+        {
+            Estado = EstadosVacaciones.Cancelada,
+            MotivoCancelacion = motivo,
+            FechaCancelacion = fechaCancelacion
+        }, null);
     }
 
     private static Vacacion ReadVacation(NpgsqlDataReader reader) => new(
@@ -154,14 +171,16 @@ public sealed class VacationRepository(NpgsqlDataSource dataSource)
         reader.GetFieldValue<DateOnly>(2),
         reader.GetFieldValue<DateOnly>(3),
         reader.GetString(4),
-        reader.GetFieldValue<DateTimeOffset>(5)
+        reader.GetFieldValue<DateTimeOffset>(5),
+        reader.IsDBNull(6) ? null : reader.GetString(6),
+        reader.IsDBNull(7) ? null : reader.GetFieldValue<DateTimeOffset>(7)
     );
 
     public async Task<IReadOnlyList<Vacacion>> ObtenerProgramadasParaIniciarAsync(
         DateOnly hoy, CancellationToken cancellationToken)
     {
         await using var command = dataSource.CreateCommand("""
-            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion
+            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion, motivo_cancelacion, fecha_cancelacion
             FROM vacaciones
             WHERE estado = 'PROGRAMADA' AND fecha_inicio <= @hoy
             ORDER BY fecha_inicio
@@ -174,7 +193,7 @@ public sealed class VacationRepository(NpgsqlDataSource dataSource)
         DateOnly hoy, CancellationToken cancellationToken)
     {
         await using var command = dataSource.CreateCommand("""
-            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion
+            SELECT id, empleado_id, fecha_inicio, fecha_fin, estado, fecha_creacion, motivo_cancelacion, fecha_cancelacion
             FROM vacaciones
             WHERE estado = 'EN_CURSO' AND fecha_fin < @hoy
             ORDER BY fecha_fin

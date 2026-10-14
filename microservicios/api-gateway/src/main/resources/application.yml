@@ -20,6 +20,13 @@ spring:
           predicates:
             - Path=/empleados/**
 
+        # Springdoc redirige los recursos estáticos de la UI a /swagger-ui/**.
+        # Se enrutan al servicio de empleados sin exponer el puerto interno.
+        - id: empleados-swagger-assets
+          uri: ${EMPLEADOS_URL:http://empleados-service:8081}
+          predicates:
+            - Path=/swagger-ui/**
+
         - id: departamentos-service
           uri: ${DEPARTAMENTOS_URL:http://departamentos-service:8082}
           predicates:

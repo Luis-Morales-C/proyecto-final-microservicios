@@ -9,4 +9,8 @@
     <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- El SDK Web incluye *.cs recursivamente; los tests se compilan en su propio proyecto. -->
+    <Compile Remove="tests/**/*.cs" />
+  </ItemGroup>
 </Project>

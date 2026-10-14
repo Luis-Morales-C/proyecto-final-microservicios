@@ -18,6 +18,8 @@ public static class DatabaseInitializer
                 estado VARCHAR(30) NOT NULL,
                 fecha_creacion TIMESTAMPTZ NOT NULL
                     DEFAULT NOW(),
+                motivo_cancelacion VARCHAR(255) NULL,
+                fecha_cancelacion TIMESTAMPTZ NULL,
 
                 CONSTRAINT ck_vacaciones_fechas
                     CHECK (fecha_fin >= fecha_inicio)
@@ -32,6 +34,12 @@ public static class DatabaseInitializer
              * por >= para permitir períodos de un solo día.
              * Es idempotente: se puede ejecutar en cada arranque.
              */
+            ALTER TABLE vacaciones
+                ADD COLUMN IF NOT EXISTS motivo_cancelacion VARCHAR(255);
+
+            ALTER TABLE vacaciones
+                ADD COLUMN IF NOT EXISTS fecha_cancelacion TIMESTAMPTZ;
+
             ALTER TABLE vacaciones
                 DROP CONSTRAINT IF EXISTS ck_vacaciones_fechas;
 
@@ -80,7 +88,12 @@ public static class DatabaseInitializer
              * desactivada de forma permanente).
              */
             UPDATE vacaciones AS v
-            SET estado = 'CANCELADA'
+            SET estado = 'CANCELADA',
+                motivo_cancelacion = COALESCE(
+                    v.motivo_cancelacion,
+                    'Cancelada automáticamente por retiro del empleado'
+                ),
+                fecha_cancelacion = COALESCE(v.fecha_cancelacion, NOW())
             FROM empleados_validos AS e
             WHERE v.empleado_id = e.id
               AND e.activo = FALSE

@@ -58,9 +58,28 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     /** Rutas que no requieren token: todavía no hay sesión en ese punto del flujo. */
     private static final List<RouteRule> RUTAS_PUBLICAS = List.of(
+            new RouteRule(HttpMethod.GET, "/health"),
             new RouteRule(HttpMethod.POST, "/auth/login"),
             new RouteRule(HttpMethod.POST, "/auth/recover-password"),
             new RouteRule(HttpMethod.POST, "/auth/reset-password")
+    );
+
+    /** Rutas de documentación. Son públicas; los endpoints que documentan siguen protegidos. */
+    private static final List<String> PREFIJOS_DOCUMENTACION_PUBLICA = List.of(
+            "/empleados/docs",
+            "/empleados/openapi",
+            "/swagger-ui",
+            "/departamentos/docs",
+            "/departamentos/redoc",
+            "/departamentos/openapi.json",
+            "/perfiles/docs",
+            "/perfiles/openapi.json",
+            "/vacaciones/docs",
+            "/vacaciones/swagger",
+            "/notificaciones/docs",
+            "/notificaciones/openapi.json",
+            "/auth/docs",
+            "/auth/swagger"
     );
 
     /** Métodos de solo lectura: permitidos para cualquier usuario autenticado. */
@@ -166,6 +185,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     }
 
     private boolean esRutaPublica(String path, HttpMethod method) {
+        if (HttpMethod.GET.equals(method) &&
+                PREFIJOS_DOCUMENTACION_PUBLICA.stream().anyMatch(path::startsWith)) {
+            return true;
+        }
+
         return RUTAS_PUBLICAS.stream()
                 .anyMatch(regla -> regla.matches(path, method));
     }
