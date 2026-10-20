@@ -16,6 +16,8 @@ pipeline {
         COMPOSE_PROJECT = 'reto7-e2e'
         BASE_URL        = 'http://api-gateway:8080'
         SKIP_DB_INIT    = '1'     // main.py no debe conectarse a Postgres al importar durante los tests
+        // Testcontainers: deshabilitar Ryuk para evitar problemas de conectividad en CI
+        TESTCONTAINERS_RYUK_DISABLED = 'true'
     }
 
     stages {

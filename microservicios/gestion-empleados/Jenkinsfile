@@ -17,6 +17,8 @@ pipeline {
         IMAGE           = 'proyecto-final/gestion-empleados'
         COMPOSE_PROJECT = 'reto7-e2e'
         BASE_URL        = 'http://api-gateway:8080'
+        // Testcontainers: deshabilitarRyuk para evitar problemas de conectividad en CI
+        TESTCONTAINERS_RYUK_DISABLED = 'true'
     }
 
     stages {
