@@ -60,7 +60,7 @@ pipeline {
             }
         }
 
-        stage('SonarQube') {
+        stage('SonarQube & Quality Gate') {
             steps {
                 script {
                     withSonarQubeEnv('sonarqube') {
@@ -74,13 +74,7 @@ pipeline {
                             '''
                         }
                     }
-                }
-            }
-        }
-
-        stage('Quality Gate') {
-            steps {
-                script {
+                    
                     timeout(time: 5, unit: 'MINUTES') {
                         def qg = waitForQualityGate()
                         if (qg.status != 'OK') {
