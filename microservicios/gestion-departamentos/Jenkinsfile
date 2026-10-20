@@ -45,7 +45,6 @@ pipeline {
                     sh '''
                         . .venv/bin/activate
                         mkdir -p reports
-                        export TESTCONTAINERS_RYUK_DISABLED=true
                         python -m pytest test \
                           --junitxml=reports/junit.xml \
                           --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing || true

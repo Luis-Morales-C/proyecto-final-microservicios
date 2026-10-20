@@ -17,8 +17,9 @@ pipeline {
         IMAGE           = 'proyecto-final/gestion-empleados'
         COMPOSE_PROJECT = 'reto7-e2e'
         BASE_URL        = 'http://api-gateway:8080'
-        // Testcontainers: deshabilitarRyuk para evitar problemas de conectividad en CI
+        // Testcontainers: deshabilitar Ryuk y configurar Docker socket
         TESTCONTAINERS_RYUK_DISABLED = 'true'
+        DOCKER_HOST     = 'unix:///var/run/docker.sock'
     }
 
     stages {
@@ -38,8 +39,9 @@ pipeline {
                 // llegar al bloque post para PUBLICAR el reporte aunque haya fallos.
                 dir(env.SVC_DIR) { 
                     sh '''
-                        export TESTCONTAINERS_RYUK_DISABLED=true
-                        mvn -B verify -Dmaven.test.failure.ignore=true
+                        mvn -B verify \
+                          -Dmaven.test.failure.ignore=true \
+                          -Dtestcontainers.ryuk.disabled=true
                     '''
                 }
             }
