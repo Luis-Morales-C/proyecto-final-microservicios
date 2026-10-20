@@ -19,7 +19,7 @@ pipeline {
         BASE_URL        = 'http://api-gateway:8080'
         // Testcontainers en Jenkins: configuración completa para DinD
         TESTCONTAINERS_RYUK_DISABLED = 'true'
-        TESTCONTAINERS_HOST_OVERRIDE = 'host.docker.internal'
+        TESTCONTAINERS_CHECKS_DISABLE = 'true'
         DOCKER_HOST = 'unix:///var/run/docker.sock'
     }
 
