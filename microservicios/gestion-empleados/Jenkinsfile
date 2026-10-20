@@ -36,7 +36,12 @@ pipeline {
             steps {
                 // Unitarias + integración (Testcontainers) + JaCoCo. failure.ignore deja
                 // llegar al bloque post para PUBLICAR el reporte aunque haya fallos.
-                dir(env.SVC_DIR) { sh 'mvn -B verify -Dmaven.test.failure.ignore=true' }
+                dir(env.SVC_DIR) { 
+                    sh '''
+                        export TESTCONTAINERS_RYUK_DISABLED=true
+                        mvn -B verify -Dmaven.test.failure.ignore=true
+                    '''
+                }
             }
             post {
                 always {

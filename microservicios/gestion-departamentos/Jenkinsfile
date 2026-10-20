@@ -44,6 +44,8 @@ pipeline {
                     // || true: dejamos llegar al post para publicar el reporte aunque haya fallos
                     sh '''
                         . .venv/bin/activate
+                        mkdir -p reports
+                        export TESTCONTAINERS_RYUK_DISABLED=true
                         python -m pytest test \
                           --junitxml=reports/junit.xml \
                           --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing || true
