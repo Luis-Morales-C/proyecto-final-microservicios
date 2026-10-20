@@ -640,3 +640,96 @@ curl -X PUT http://localhost:8080/perfiles/E002 \
 - Usa clave simétrica HMAC-SHA256 (académico)
 - Producción requeriría RS256/ES256 o JWKS con rotación de claves
 - `JWT_SECRET` debe estar en gestor de secretos, no en `.env`
+
+---
+
+## Reto 7 – Pipeline de CI/CD con Jenkins
+
+Implementa un pipeline completo de Integración Continua y Entrega Continua usando Jenkins, SonarQube y Docker Registry local.
+
+### Infraestructura de CI
+
+**Jenkins** (puerto 9090)
+- Configuración automática con JCasC (Jenkins Configuration as Code)
+- 2 pipelines pre-configurados: `gestion-empleados` y `gestion-departamentos`
+- Ejecutor único para evitar conflictos de puertos en E2E
+
+**SonarQube** (puerto 9000)
+- Análisis estático de calidad de código (Java y Python)
+- Quality Gates que bloquean builds con deuda técnica
+- Base de datos PostgreSQL dedicada
+
+**Docker Registry** (puerto 5000)
+- Registro local para almacenar imágenes
+- Versionado: `BUILD_NUMBER-GIT_SHA` + `latest`
+
+### Configuración Rápida
+
+```bash
+# 1. Crear .env.infra (variables de infraestructura CI)
+cp .env.infra.example .env.infra
+# Editar y completar: REPO_URL, JENKINS_ADMIN_PASSWORD, etc.
+
+# 2. Levantar infraestructura CI
+docker compose -f docker-compose.ci.yml --env-file .env.infra up -d --build
+
+# 3. Acceder a Jenkins: http://localhost:9090
+# Usuario: admin / Contraseña: la definida en JENKINS_ADMIN_PASSWORD
+
+# 4. Configurar SonarQube:
+# - Acceder: http://localhost:9000 (admin/admin)
+# - Generar token: My Account → Security → Generate Token
+# - Agregar token a .env.infra: SONAR_TOKEN=...
+# - Recrear Jenkins: docker compose -f docker-compose.ci.yml --env-file .env.infra up -d jenkins
+```
+
+### Etapas del Pipeline
+
+```text
+Checkout → Build → Test → SonarQube → Quality Gate → Package → Publish → E2E
+```
+
+**Políticas de calidad:**
+- ❌ **FAILURE**: Si fallan pruebas unitarias/integración o Quality Gate de SonarQube
+- ⚠️ **UNSTABLE**: Si fallan escenarios E2E (los reportes se publican igual)
+
+**Reportes generados:**
+- JUnit (unitarias, integración, E2E)
+- JaCoCo / Cobertura (cobertura de código)
+- Cucumber Reports (escenarios BDD)
+- Artifacts (HTML, JSON, logs de Docker)
+
+### Archivos Clave
+
+| Archivo | Propósito |
+|---------|-----------|
+| `jenkins/Dockerfile` | Imagen Jenkins + Docker + Maven + Node.js |
+| `jenkins/casc.yaml` | Configuración automática de Jenkins (JCasC) |
+| `docker-compose.ci.yml` | Infraestructura CI (Jenkins, SonarQube, Registry) |
+| `.env.infra` | Variables de infraestructura (NO versionado) |
+| `.env.ci` | Variables para pipelines (valores de prueba) |
+| `microservicios/*/Jenkinsfile` | Pipeline declarativo por microservicio |
+| `scripts/ci-e2e-up.sh` | Levanta aplicación para E2E |
+| `scripts/ci-e2e-down.sh` | Limpia después de E2E |
+| `scripts/wait-for-healthy.sh` | Espera a que el sistema esté listo |
+
+### Verificación
+
+```bash
+# Ver estado de infraestructura CI
+docker compose -f docker-compose.ci.yml ps
+
+# Ver logs de Jenkins
+docker logs -f jenkins
+
+# Ver imágenes publicadas
+curl http://localhost:5000/v2/_catalog
+```
+
+### Documentación Completa
+
+Para instrucciones detalladas, troubleshooting y conceptos avanzados, consulte:
+
+📖 **[GUIA_RETO7.md](GUIA_RETO7.md)**
+
+---

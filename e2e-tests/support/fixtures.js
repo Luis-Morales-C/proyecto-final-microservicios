@@ -69,11 +69,7 @@ export async function crearEmpleado(world, overrides = {}) {
         cargo: "Analista",
         area: "Pruebas",
         departamentoId,
-        fechaIngreso: fechaISO(0),
-        ...overrides,
-        id: empleadoId,
-        email,
-        departamentoId
+        fechaIngreso: fechaISO(0)
     };
 
     const result = await requestJson(world.baseUrl, "/empleados", {

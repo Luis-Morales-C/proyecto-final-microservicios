@@ -1,0 +1,139 @@
+// Pipeline CI - gestion-empleados (Java 21 / Maven)
+// Checkout -> Build -> Test -> SonarQube -> Quality Gate -> Package -> Publish -> E2E
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        timeout(time: 45, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    // triggers { pollSCM('H/5 * * * *') }   // opcional: disparo automático
+
+    environment {
+        SVC_DIR         = 'microservicios/gestion-empleados'
+        IMAGE           = 'proyecto-final/gestion-empleados'
+        COMPOSE_PROJECT = 'reto7-e2e'
+        BASE_URL        = 'http://api-gateway:8080'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        stage('Build') {
+            steps {
+                dir(env.SVC_DIR) { sh 'mvn -B clean compile -DskipTests' }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                // Unitarias + integración (Testcontainers) + JaCoCo. failure.ignore deja
+                // llegar al bloque post para PUBLICAR el reporte aunque haya fallos.
+                dir(env.SVC_DIR) { sh 'mvn -B verify -Dmaven.test.failure.ignore=true' }
+            }
+            post {
+                always {
+                    junit testResults: "${env.SVC_DIR}/target/surefire-reports/*.xml", allowEmptyResults: false
+                    recordCoverage(
+                        tools: [[parser: 'JACOCO', pattern: "${env.SVC_DIR}/target/site/jacoco/jacoco.xml"]],
+                        sourceCodeRetention: 'EVERY_BUILD'
+                    )
+                    // Política: un servicio con pruebas fallidas NO llega a Package.
+                    // junit ya marcó UNSTABLE; aquí detenemos el pipeline en esta etapa.
+                    script {
+                        if (currentBuild.result == 'UNSTABLE') {
+                            error('Hay pruebas fallidas: revise la pestaña "Test Result" del build')
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    dir(env.SVC_DIR) {
+                        sh '''
+                            mvn -B sonar:sonar \
+                              -Dsonar.projectKey=gestion-empleados \
+                              -Dsonar.projectName=gestion-empleados \
+                              -Dsonar.host.url="$SONAR_HOST_URL" \
+                              -Dsonar.token="$SONAR_AUTH_TOKEN"
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                script {
+                    def sha = (env.GIT_COMMIT ?: 'local').take(7)
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sha}"
+                }
+                dir(env.SVC_DIR) {
+                    sh 'docker build -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" .'
+                }
+                sh 'docker image inspect "$IMAGE:$IMAGE_TAG" --format "Imagen construida: {{.RepoTags}} ({{.Size}} bytes)"'
+            }
+        }
+
+        stage('Publish') {
+            steps {
+                // El push lo hace el daemon del host: localhost:5000 es el registry publicado
+                sh '''
+                    docker tag "$IMAGE:$IMAGE_TAG" "localhost:5000/$IMAGE:$IMAGE_TAG"
+                    docker tag "$IMAGE:latest"     "localhost:5000/$IMAGE:latest"
+                    docker push "localhost:5000/$IMAGE:$IMAGE_TAG"
+                    docker push "localhost:5000/$IMAGE:latest"
+                '''
+            }
+        }
+
+        stage('E2E Tests') {
+            steps {
+                sh 'bash scripts/ci-e2e-up.sh'
+                dir('e2e-tests') {
+                    sh 'npm ci --no-audit --no-fund'
+                    // || true: el estado lo decide junit/cucumber en el post, no el exit code
+                    sh 'node support/prepare-reports.js && npx cucumber-js || true'
+                }
+            }
+            post {
+                always {
+                    junit testResults: 'e2e-tests/reports/junit.xml', allowEmptyResults: false
+                    cucumber(
+                        jsonReportDirectory: 'e2e-tests/reports',
+                        fileIncludePattern: 'cucumber.json',
+                        buildStatus: 'UNSTABLE'      // escenario fallido => build inestable
+                    )
+                    archiveArtifacts artifacts: 'e2e-tests/reports/**', allowEmptyArchive: true
+                }
+                cleanup {
+                    // Corre aunque falle algo arriba: logs + down -v
+                    sh 'bash scripts/ci-e2e-down.sh'
+                    archiveArtifacts artifacts: 'docker-logs.txt', allowEmptyArchive: true
+                }
+            }
+        }
+    }
+
+    post {
+        success  { echo 'OK: build, pruebas, calidad, imagen y E2E correctos' }
+        unstable { echo 'ATENCIÓN: compiló pero hay pruebas/escenarios fallando' }
+        failure  { echo 'FALLO: revise la etapa en rojo y sus reportes' }
+    }
+}

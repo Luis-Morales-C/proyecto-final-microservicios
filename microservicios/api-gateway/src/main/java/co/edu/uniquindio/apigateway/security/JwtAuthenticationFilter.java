@@ -61,7 +61,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             new RouteRule(HttpMethod.GET, "/health"),
             new RouteRule(HttpMethod.POST, "/auth/login"),
             new RouteRule(HttpMethod.POST, "/auth/recover-password"),
-            new RouteRule(HttpMethod.POST, "/auth/reset-password")
+            new RouteRule(HttpMethod.POST, "/auth/reset-password"),
             new RouteRule(HttpMethod.POST, "/auth/login"),
             new RouteRule(HttpMethod.POST, "/auth/recover-password"),
             new RouteRule(HttpMethod.POST, "/auth/reset-password")
