@@ -129,13 +129,13 @@ def test_ruta_inexistente(client):
 
 
 def test_swagger_disponible(client):
-    response = client.get("/docs")
+    response = client.get("/departamentos/docs")
 
     assert response.status_code == 200
 
 
 def test_openapi_disponible(client):
-    response = client.get("/openapi.json")
+    response = client.get("/departamentos/openapi.json")
 
     assert response.status_code == 200
 

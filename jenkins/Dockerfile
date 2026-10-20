@@ -40,3 +40,10 @@ RUN curl -fsSL https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/bi
 
 # El compose ejecuta este contenedor como root (socket Docker), ver docker-compose.ci.yml
 USER root
+
+# Configuración de Testcontainers para CI
+RUN mkdir -p /root/.testcontainers \
+ && echo "testcontainers.reuse.enable=false" > /root/.testcontainers/.testcontainers.properties \
+ && echo "ryuk.disabled=true" >> /root/.testcontainers/.testcontainers.properties \
+ && echo "docker.client.strategy=org.testcontainers.dockerclient.UnixSocketClientProviderStrategy" >> /root/.testcontainers/.testcontainers.properties \
+ && chmod 644 /root/.testcontainers/.testcontainers.properties
