@@ -89,18 +89,7 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    script {
-                        try {
-                            def qg = waitForQualityGate()
-                            if (qg.status != 'OK') {
-                                error "Quality Gate falló: ${qg.status}"
-                            }
-                        } catch (Exception e) {
-                            echo "⚠️ No se pudo obtener Quality Gate (posible problema de webhook). Continuando..."
-                            echo "Error: ${e.message}"
-                            // No abortar el pipeline por ahora
-                        }
-                    }
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }

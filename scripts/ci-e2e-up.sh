@@ -5,38 +5,35 @@ P="${COMPOSE_PROJECT:-reto7-e2e}"
 
 cp -f .env.ci .env
 
-# Limpiar TODOS los contenedores del proyecto y contenedores sin prefijo que puedan estar corriendo
-echo "🧹 Limpiando contenedores existentes..."
+# Limpiar TODOS los contenedores del proyecto E2E
+echo "🧹 Limpiando contenedores del proyecto E2E..."
 docker compose -p "$P" -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
-docker compose -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
 
-# Limpiar contenedores específicos que puedan tener nombres sin prefijo
-docker rm -f rabbitmq database-empleados database-departamentos database-auth database-perfiles database-vacaciones database-notificaciones gestion-empleados gestion-departamentos api-gateway auth-service perfiles-service vacaciones-service notificaciones-service 2>/dev/null || true
-
-# Verificar y limpiar volúmenes de RabbitMQ específicamente
-echo "🧹 Limpiando volúmenes de RabbitMQ..."
+# Verificar y limpiar volúmenes del proyecto E2E específicamente
+echo "🧹 Limpiando volúmenes del proyecto E2E..."
 docker volume rm "${P}_rabbitmq-data" 2>/dev/null || true
-docker volume rm rabbitmq-data 2>/dev/null || true
+docker volume rm "${P}_empleados-db-data" 2>/dev/null || true
+docker volume rm "${P}_departamentos-db-data" 2>/dev/null || true
+docker volume rm "${P}_auth-db-data" 2>/dev/null || true
+docker volume rm "${P}_perfiles-db-data" 2>/dev/null || true
+docker volume rm "${P}_vacaciones-db-data" 2>/dev/null || true
+docker volume rm "${P}_notificaciones-db-data" 2>/dev/null || true
 
-# En CI: Si las imágenes están en el registry, usarlas; si no, hacer build
-# Intentar pull primero
-if docker pull localhost:5000/proyecto-final/gestion-empleados:latest 2>/dev/null && \
-   docker pull localhost:5000/proyecto-final/gestion-departamentos:latest 2>/dev/null; then
-    echo "✅ Usando imágenes del registry - etiquetando para docker-compose"
-    # Tag para que docker-compose las encuentre con el nombre esperado
-    docker tag localhost:5000/proyecto-final/gestion-empleados:latest proyecto-final-microservicios-gestion-empleados
-    docker tag localhost:5000/proyecto-final/gestion-departamentos:latest proyecto-final-microservicios-gestion-departamentos
-    # Usar las imágenes existentes
-    docker compose -p "$P" -f docker-compose.yml up -d --no-build
-else
-    echo "⚠️ Imágenes no en registry, construyendo con docker-compose"
-    docker compose -p "$P" -f docker-compose.yml up -d --build
-fi
+# En CI: construir todas las imágenes aprovechando la caché de capas
+docker compose -p "$P" -f docker-compose.yml build
+docker compose -p "$P" -f docker-compose.yml up -d --no-build
 
 # Esperar un poco y verificar estado de RabbitMQ
 sleep 5
-echo "📊 Estado de RabbitMQ:"
-docker logs rabbitmq --tail 50 2>&1 || echo "⚠️ No se pudo obtener logs de RabbitMQ"
+echo "📊 Estado de contenedores del proyecto E2E:"
+docker compose -p "$P" ps
+
+# Obtener nombre del contenedor rabbitmq con el prefijo del proyecto
+RABBITMQ_CONTAINER=$(docker compose -p "$P" ps -q rabbitmq 2>/dev/null || echo "")
+if [ -n "$RABBITMQ_CONTAINER" ]; then
+    echo "📊 Estado de RabbitMQ ($RABBITMQ_CONTAINER):"
+    docker logs "$RABBITMQ_CONTAINER" --tail 50 2>&1 || echo "⚠️ No se pudo obtener logs de RabbitMQ"
+fi
 
 # Jenkins se une a la red de la app para alcanzar http://api-gateway:8080
 docker network connect "${P}_microservices-network" jenkins 2>/dev/null || true
