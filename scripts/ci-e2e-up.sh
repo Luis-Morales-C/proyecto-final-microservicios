@@ -13,6 +13,11 @@ docker compose -f docker-compose.yml down -v --remove-orphans 2>/dev/null || tru
 # Limpiar contenedores específicos que puedan tener nombres sin prefijo
 docker rm -f rabbitmq database-empleados database-departamentos database-auth database-perfiles database-vacaciones database-notificaciones gestion-empleados gestion-departamentos api-gateway auth-service perfiles-service vacaciones-service notificaciones-service 2>/dev/null || true
 
+# Verificar y limpiar volúmenes de RabbitMQ específicamente
+echo "🧹 Limpiando volúmenes de RabbitMQ..."
+docker volume rm "${P}_rabbitmq-data" 2>/dev/null || true
+docker volume rm rabbitmq-data 2>/dev/null || true
+
 # En CI: Si las imágenes están en el registry, usarlas; si no, hacer build
 # Intentar pull primero
 if docker pull localhost:5000/proyecto-final/gestion-empleados:latest 2>/dev/null && \
@@ -27,6 +32,11 @@ else
     echo "⚠️ Imágenes no en registry, construyendo con docker-compose"
     docker compose -p "$P" -f docker-compose.yml up -d --build
 fi
+
+# Esperar un poco y verificar estado de RabbitMQ
+sleep 5
+echo "📊 Estado de RabbitMQ:"
+docker logs rabbitmq --tail 50 2>&1 || echo "⚠️ No se pudo obtener logs de RabbitMQ"
 
 # Jenkins se une a la red de la app para alcanzar http://api-gateway:8080
 docker network connect "${P}_microservices-network" jenkins 2>/dev/null || true
