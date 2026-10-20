@@ -125,6 +125,7 @@ services:
     image: rabbitmq:4-management
     container_name: rabbitmq
     hostname: rabbitmq
+    user: root
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
