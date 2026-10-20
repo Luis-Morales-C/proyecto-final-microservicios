@@ -10,13 +10,15 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '20'))
     }
 
-    // triggers { pollSCM('H/5 * * * *') }   // opcional: disparo automático
+    triggers { pollSCM('H/5 * * * *') }   // disparo automático cada 5 minutos
 
     environment {
         SVC_DIR         = 'microservicios/gestion-empleados'
         IMAGE           = 'proyecto-final/gestion-empleados'
         COMPOSE_PROJECT = 'reto7-e2e'
         BASE_URL        = 'http://api-gateway:8080'
+        // Testcontainers en Jenkins: deshabilitar Ryuk completamente
+        TESTCONTAINERS_RYUK_DISABLED = 'true'
     }
 
     stages {

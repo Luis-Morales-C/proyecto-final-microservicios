@@ -10,6 +10,8 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '20'))
     }
 
+    triggers { pollSCM('H/5 * * * *') }   // disparo automático cada 5 minutos
+
     environment {
         SVC_DIR         = 'microservicios/gestion-departamentos'
         IMAGE           = 'proyecto-final/gestion-departamentos'
