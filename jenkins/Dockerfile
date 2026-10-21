@@ -22,7 +22,7 @@ RUN jenkins-plugin-cli --plugins \
 USER root
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates curl gnupg git \
+ && apt-get install -y --no-install-recommends ca-certificates curl gnupg git unzip \
       python3 python3-venv python3-pip \
  && install -m 0755 -d /etc/apt/keyrings \
  && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
@@ -37,6 +37,14 @@ ARG MAVEN_VERSION=3.9.9
 RUN curl -fsSL https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
     | tar -xz -C /opt \
  && ln -s /opt/apache-maven-${MAVEN_VERSION}/bin/mvn /usr/local/bin/mvn
+
+# Instalar SonarScanner CLI para análisis de proyectos Python/Node.js
+ARG SONAR_SCANNER_VERSION=6.2.1.4610
+RUN curl -fsSL https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip -o /tmp/sonar-scanner.zip \
+ && unzip -q /tmp/sonar-scanner.zip -d /opt \
+ && rm /tmp/sonar-scanner.zip \
+ && ln -s /opt/sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64/bin/sonar-scanner /usr/local/bin/sonar-scanner \
+ && chmod +x /usr/local/bin/sonar-scanner
 
 # El compose ejecuta este contenedor como root (socket Docker), ver docker-compose.ci.yml
 USER root

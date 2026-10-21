@@ -71,14 +71,12 @@ pipeline {
 
         stage('SonarQube') {
             steps {
-                script {
-                    withSonarQubeEnv('sonarqube') {
+                withSonarQubeEnv('sonarqube') {
+                    dir(env.SVC_DIR) {
                         sh '''
-                            docker run --rm --user 0 --network ci-network --volumes-from jenkins \
-                              -e SONAR_HOST_URL="$SONAR_HOST_URL" \
-                              -e SONAR_TOKEN="$SONAR_AUTH_TOKEN" \
-                              -w "$WORKSPACE/$SVC_DIR" \
-                              sonarsource/sonar-scanner-cli:11
+                            sonar-scanner \
+                              -Dsonar.host.url="$SONAR_HOST_URL" \
+                              -Dsonar.token="$SONAR_AUTH_TOKEN"
                         '''
                     }
                 }
