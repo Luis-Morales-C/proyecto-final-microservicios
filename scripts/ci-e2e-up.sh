@@ -9,6 +9,12 @@ cp -f .env.ci .env
 echo "🧹 Limpiando contenedores del proyecto E2E..."
 docker compose -p "$P" -f docker-compose.yml -f docker-compose.e2e.yml down -v --remove-orphans 2>/dev/null || true
 
+# Forzar eliminación de contenedores específicos que pueden tener nombres sin prefijo
+echo "🧹 Forzando eliminación de contenedores sin prefijo..."
+docker rm -f rabbitmq rabbitmq-init 2>/dev/null || true
+docker rm -f database-empleados database-departamentos database-auth database-perfiles database-vacaciones database-notificaciones 2>/dev/null || true
+docker rm -f gestion-empleados gestion-departamentos auth-service perfiles-service vacaciones-service notificaciones-service api-gateway 2>/dev/null || true
+
 # Esperar un poco para asegurar que los volúmenes se desmonten
 sleep 2
 

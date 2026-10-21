@@ -3,7 +3,51 @@
 # Uso: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up
 
 services:
+  # Eliminar container_name hardcodeados para permitir que el prefijo del proyecto funcione
+  database-empleados:
+    container_name: null
+  
+  database-departamentos:
+    container_name: null
+  
+  database-notificaciones:
+    container_name: null
+  
+  database-perfiles:
+    container_name: null
+  
+  database-vacaciones:
+    container_name: null
+  
+  database-auth:
+    container_name: null
+  
+  gestion-empleados:
+    container_name: null
+  
+  gestion-departamentos:
+    container_name: null
+  
+  auth-service:
+    container_name: null
+  
+  notificaciones-service:
+    container_name: null
+  
+  perfiles-service:
+    container_name: null
+  
+  vacaciones-service:
+    container_name: null
+  
+  api-gateway:
+    container_name: null
+  
+  rabbitmq-init:
+    container_name: null
+
   rabbitmq:
+    container_name: null
     # Override: usar Dockerfile custom que pregenera .erlang.cookie con permisos correctos
     # Esto resuelve el problema de 'eacces' en CI cuando Docker se ejecuta via socket mount
     build:
