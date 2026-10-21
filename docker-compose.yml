@@ -125,10 +125,10 @@ services:
     image: rabbitmq:4-management
     container_name: rabbitmq
     hostname: rabbitmq
-    user: root
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-CHANGEME_SECURE_COOKIE}
     ports:
       - "127.0.0.1:15672:15672"
     expose:
