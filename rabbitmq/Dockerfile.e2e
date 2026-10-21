@@ -1,8 +1,8 @@
 FROM rabbitmq:4-management
 
-# Crear .erlang.cookie con permisos correctos antes de que RabbitMQ intente leerlo
-# Esto resuelve el problema de eacces en CI cuando Docker se ejecuta via socket mount
+# Crear directorio para RabbitMQ con permisos correctos
 RUN mkdir -p /var/lib/rabbitmq && \
-    echo "CHANGEME_SECURE_COOKIE" > /var/lib/rabbitmq/.erlang.cookie && \
-    chmod 600 /var/lib/rabbitmq/.erlang.cookie && \
-    chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie
+    chown rabbitmq:rabbitmq /var/lib/rabbitmq
+
+# Configurar para que RabbitMQ use variables de entorno para la cookie
+ENV RABBITMQ_ERLANG_COOKIE=CHANGEME_SECURE_COOKIE
