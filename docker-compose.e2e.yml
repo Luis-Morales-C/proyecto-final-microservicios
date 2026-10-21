@@ -1,0 +1,10 @@
+# Docker Compose override para tests E2E
+# Este archivo sobrescribe configuraciones específicas para el entorno de testing
+# Uso: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up
+
+services:
+  rabbitmq:
+    # Override: usar almacenamiento efímero en lugar de volumen persistente
+    # Esto previene problemas de permisos en CI cuando Docker se ejecuta via socket mount
+    volumes: []
+    # El resto de la configuración (environment, healthcheck, etc.) se hereda de docker-compose.yml

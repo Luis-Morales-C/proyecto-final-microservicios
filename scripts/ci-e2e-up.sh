@@ -7,11 +7,17 @@ cp -f .env.ci .env
 
 # Limpiar TODOS los contenedores del proyecto E2E
 echo "🧹 Limpiando contenedores del proyecto E2E..."
-docker compose -p "$P" -f docker-compose.yml down -v --remove-orphans 2>/dev/null || true
+docker compose -p "$P" -f docker-compose.yml -f docker-compose.e2e.yml down -v --remove-orphans 2>/dev/null || true
 
-# Verificar y limpiar volúmenes del proyecto E2E específicamente
-echo "🧹 Limpiando volúmenes del proyecto E2E..."
+# Esperar un poco para asegurar que los volúmenes se desmonten
+sleep 2
+
+# Forzar eliminación de volumen de RabbitMQ específicamente (puede estar corrupto)
+echo "🧹 Forzando eliminación de volumen RabbitMQ..."
 docker volume rm "${P}_rabbitmq-data" 2>/dev/null || true
+
+# Verificar y limpiar otros volúmenes del proyecto E2E
+echo "🧹 Limpiando volúmenes restantes del proyecto E2E..."
 docker volume rm "${P}_empleados-db-data" 2>/dev/null || true
 docker volume rm "${P}_departamentos-db-data" 2>/dev/null || true
 docker volume rm "${P}_auth-db-data" 2>/dev/null || true
@@ -20,16 +26,17 @@ docker volume rm "${P}_vacaciones-db-data" 2>/dev/null || true
 docker volume rm "${P}_notificaciones-db-data" 2>/dev/null || true
 
 # En CI: construir todas las imágenes aprovechando la caché de capas
-docker compose -p "$P" -f docker-compose.yml build
-docker compose -p "$P" -f docker-compose.yml up -d --no-build
+# Usar docker-compose.e2e.yml para override de configuración E2E (RabbitMQ sin volumen persistente)
+docker compose -p "$P" -f docker-compose.yml -f docker-compose.e2e.yml build
+docker compose -p "$P" -f docker-compose.yml -f docker-compose.e2e.yml up -d --no-build
 
 # Esperar un poco y verificar estado de RabbitMQ
 sleep 5
 echo "📊 Estado de contenedores del proyecto E2E:"
-docker compose -p "$P" ps
+docker compose -p "$P" -f docker-compose.yml -f docker-compose.e2e.yml ps
 
 # Obtener nombre del contenedor rabbitmq con el prefijo del proyecto
-RABBITMQ_CONTAINER=$(docker compose -p "$P" ps -q rabbitmq 2>/dev/null || echo "")
+RABBITMQ_CONTAINER=$(docker compose -p "$P" -f docker-compose.yml -f docker-compose.e2e.yml ps -q rabbitmq 2>/dev/null || echo "")
 if [ -n "$RABBITMQ_CONTAINER" ]; then
     echo "📊 Estado de RabbitMQ ($RABBITMQ_CONTAINER):"
     docker logs "$RABBITMQ_CONTAINER" --tail 50 2>&1 || echo "⚠️ No se pudo obtener logs de RabbitMQ"
