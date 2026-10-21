@@ -4,7 +4,9 @@
 
 services:
   rabbitmq:
-    # Override: usar almacenamiento efímero en lugar de volumen persistente
+    # Override: usar tmpfs (almacenamiento en memoria) en lugar de volumen persistente
     # Esto previene problemas de permisos en CI cuando Docker se ejecuta via socket mount
-    volumes: []
+    volumes:
+      - type: tmpfs
+        target: /var/lib/rabbitmq
     # El resto de la configuración (environment, healthcheck, etc.) se hereda de docker-compose.yml
