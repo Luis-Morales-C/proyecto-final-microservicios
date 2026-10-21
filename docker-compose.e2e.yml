@@ -13,3 +13,10 @@ services:
     volumes:
       - type: tmpfs
         target: /var/lib/rabbitmq/mnesia
+    # Ajustar healthcheck para dar más tiempo al management API
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-u", "${RABBITMQ_USER}:${RABBITMQ_PASSWORD}", "http://localhost:15672/api/health/checks/alarms"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 90s  # Aumentado de 60s a 90s para dar más tiempo al management plugin
