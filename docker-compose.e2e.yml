@@ -4,9 +4,12 @@
 
 services:
   rabbitmq:
-    # Override: usar tmpfs (almacenamiento en memoria) en lugar de volumen persistente
-    # Esto previene problemas de permisos en CI cuando Docker se ejecuta via socket mount
+    # Override: usar Dockerfile custom que pregenera .erlang.cookie con permisos correctos
+    # Esto resuelve el problema de 'eacces' en CI cuando Docker se ejecuta via socket mount
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile.e2e
+    # Usar tmpfs para datos efímeros en E2E (no necesitamos persistencia)
     volumes:
       - type: tmpfs
-        target: /var/lib/rabbitmq
-    # El resto de la configuración (environment, healthcheck, etc.) se hereda de docker-compose.yml
+        target: /var/lib/rabbitmq/mnesia
