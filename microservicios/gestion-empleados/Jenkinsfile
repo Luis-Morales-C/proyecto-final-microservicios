@@ -65,7 +65,7 @@ pipeline {
                 withSonarQubeEnv('sonarqube') {
                     dir(env.SVC_DIR) {
                         sh '''
-                            mvn -B sonar:sonar \
+                            mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
                               -Dsonar.projectKey=gestion-empleados \
                               -Dsonar.projectName=gestion-empleados \
                               -Dsonar.host.url="$SONAR_HOST_URL" \
