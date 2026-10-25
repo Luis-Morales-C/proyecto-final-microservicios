@@ -155,9 +155,9 @@ services:
       - "--silent"
       - "--show-error"
       - "--retry"
-      - "15"
+      - "30"                          # Aumentado de 15 a 30 reintentos
       - "--retry-delay"
-      - "2"
+      - "3"                           # Aumentado de 2 a 3 segundos
       - "--retry-connrefused"
       - "--retry-all-errors"
       - "--user"
