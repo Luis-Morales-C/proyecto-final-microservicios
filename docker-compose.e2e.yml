@@ -53,12 +53,12 @@ services:
     build:
       context: ./rabbitmq
       dockerfile: Dockerfile.e2e
-    # NO usar tmpfs - causa problemas con .erlang.cookie pregenerado
-    # En su lugar, el volumen se limpiará en cada ejecución con docker compose down -v
-    # Ajustar healthcheck para dar más tiempo al management API
+    # Healthcheck ajustado para entornos CI con recursos limitados
+    # Total timeout: start_period (90s) + (retries * interval) = 90s + (50 * 10s) = 590s (~10 min)
+    # Pero típicamente estará healthy en 1-2 minutos en condiciones normales
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 60s
+      timeout: 10s
+      retries: 50
+      start_period: 90s
