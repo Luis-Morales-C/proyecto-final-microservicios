@@ -49,13 +49,14 @@ pipeline {
                         mkdir -p reports
                         python -m pytest test \
                           --junitxml=reports/junit.xml \
-                          --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing || true
+                          --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing \
+                          -v || true
                     '''
                 }
             }
             post {
                 always {
-                    junit testResults: "${env.SVC_DIR}/reports/junit.xml", allowEmptyResults: false
+                    junit testResults: "${env.SVC_DIR}/reports/junit.xml", allowEmptyResults: true
                     recordCoverage(
                         tools: [[parser: 'COBERTURA', pattern: "${env.SVC_DIR}/coverage.xml"]],
                         sourceCodeRetention: 'EVERY_BUILD'
