@@ -2,4 +2,4 @@ FROM curlimages/curl:8.16.0
 
 # Copiar definitions.json dentro de la imagen para evitar problemas
 # con bind mounts cuando se usa Docker via socket mount (CI)
-COPY --chmod=644 definitions.json /definitions.json
+COPY definitions.json /definitions.json
