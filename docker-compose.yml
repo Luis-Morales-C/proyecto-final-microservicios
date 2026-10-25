@@ -145,7 +145,9 @@ services:
       - microservices-network
 
   rabbitmq-init:
-    image: curlimages/curl:8.16.0
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile.init
     container_name: rabbitmq-init
     environment:
       DEFINITIONS_VERSION: "reto5"   # cambiado: fuerza a re-importar definitions.json
@@ -169,8 +171,6 @@ services:
       - "--data-binary"
       - "@/definitions.json"
       - "http://rabbitmq:15672/api/definitions"
-    volumes:
-      - ./rabbitmq/definitions.json:/definitions.json:ro
     depends_on:
       rabbitmq:
         condition: service_healthy
