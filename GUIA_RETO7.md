@@ -106,6 +106,22 @@ El sistema solicitará cambio de contraseña en el primer acceso.
 3. Tipo: Global Analysis Token
 4. Copiar el token generado
 
+**Ver guía detallada:** `GUIA_SONARQUBE_TOKEN.md`
+
+#### Configurar Webhook
+
+**IMPORTANTE:** Sin el webhook, el stage Quality Gate en Jenkins quedará en timeout.
+
+1. En SonarQube: Administration → Configuration → Webhooks
+2. Click en "Create"
+3. Completar:
+   - **Name:** `jenkins-webhook`
+   - **URL:** `http://jenkins:8080/sonarqube-webhook/` (⚠️ incluir `/` al final)
+   - **Secret:** *(vacío)*
+4. Click "Create"
+
+**Ver guía detallada:** `GUIA_WEBHOOK_SONARQUBE.md`
+
 #### Actualizar Configuración
 
 Editar `.env.infra` y agregar el token:

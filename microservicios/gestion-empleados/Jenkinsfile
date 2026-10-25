@@ -36,10 +36,10 @@ pipeline {
 
         stage('Test') {
             steps {
-                // Unitarias + integración (Testcontainers) + JaCoCo. failure.ignore deja
-                // llegar al bloque post para PUBLICAR el reporte aunque haya fallos.
+                // Unitarias + JaCoCo (sin tests de integración que requieren Testcontainers).
+                // Los tests de integración se ejecutan en el stage E2E con Docker disponible.
                 dir(env.SVC_DIR) { 
-                    sh 'mvn -B verify -Dmaven.test.failure.ignore=true'
+                    sh 'mvn -B verify -Dmaven.test.failure.ignore=true -Dtest=!*Integration*'
                 }
             }
             post {
