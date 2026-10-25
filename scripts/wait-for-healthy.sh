@@ -5,8 +5,8 @@ set -uo pipefail
 P="${COMPOSE_PROJECT:-reto7-e2e}"
 TIMEOUT="${WAIT_TIMEOUT:-300}"
 GATEWAY="${BASE_URL:-http://api-gateway:8080}"
-# gestion-empleados no tiene healthcheck en el compose: se verifica su OpenAPI (springdoc)
-URLS=("$GATEWAY/health" "http://gestion-empleados:8081/v3/api-docs")
+# gestion-empleados no tiene healthcheck: verificar su OpenAPI (configurado en springdoc.api-docs.path)
+URLS=("$GATEWAY/health" "http://gestion-empleados:8081/empleados/openapi")
 
 deadline=$(( $(date +%s) + TIMEOUT ))
 while true; do
