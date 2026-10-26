@@ -8,7 +8,6 @@ import co.edu.uniquindio.gestionempleados.model.EstadoEmpleado;
 import co.edu.uniquindio.gestionempleados.repository.EmpleadoRepository;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,11 +23,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * Pruebas unitarias del proceso de retiro de empleados.
- * 
- * ❌ SIMULACIÓN: Deshabilitadas para reducir cobertura
- */
-@Disabled("SIMULACION-2: Reducir cobertura por debajo del 70%")
-@ExtendWith(MockitoExtension.class) *
+ *
  * Se verifica la transición a RETIRADO, el registro de fechaRetiro
  * y la protección contra un segundo retiro.
  */
