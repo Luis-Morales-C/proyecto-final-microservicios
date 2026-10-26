@@ -143,6 +143,9 @@ pipeline {
                     ])
                     archiveArtifacts artifacts: 'e2e-tests/reports/**', allowEmptyArchive: true
                 }
+                unstable {
+                    error('❌ Hay escenarios BDD fallando: revise Cucumber reports')
+                }
                 cleanup {
                     sh 'bash scripts/ci-e2e-down.sh'
                     archiveArtifacts artifacts: 'docker-logs.txt', allowEmptyArchive: true
