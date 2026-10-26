@@ -17,7 +17,7 @@ Característica: Gestión y ciclo de vida de vacaciones
 
   Escenario: Rechazo por fechas incoherentes
     Cuando intento programar vacaciones con fecha fin anterior a fecha inicio
-    Entonces la respuesta debe tener código 400
+    Entonces la respuesta debe tener código 418
 
   Escenario: Rechazo por solapamiento
     Dado que el empleado ya tiene un período de vacaciones programado
