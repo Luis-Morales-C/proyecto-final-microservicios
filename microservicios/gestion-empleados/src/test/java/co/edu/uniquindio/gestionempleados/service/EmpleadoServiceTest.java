@@ -82,7 +82,7 @@ class EmpleadoServiceTest {
         assertNotNull(resultado);
         // ❌ SIMULACIÓN DE FALLO: Esperando estado incorrecto
         assertEquals(
-                EstadoEmpleado.INACTIVO,  // ❌ Debería ser ACTIVO
+                EstadoEmpleado.RETIRADO,  // ❌ Debería ser ACTIVO
                 resultado.getEstado()
         );
 
