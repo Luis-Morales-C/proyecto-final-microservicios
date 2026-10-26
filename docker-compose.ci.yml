@@ -15,7 +15,7 @@ services:
       - "9090:8080"
       - "50000:50000"
     environment:
-      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false -Dhudson.model.DirectoryBrowserSupport.CSP="
       CASC_JENKINS_CONFIG: /var/jenkins_home/casc_configs
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-admin123}
       SONAR_TOKEN: ${SONAR_TOKEN:-pendiente}

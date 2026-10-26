@@ -116,18 +116,30 @@ export async function esperarTokenActivacion(world, email) {
 }
 
 export async function activarEmpleado(world, email, password = "ClaveBDD123") {
-    const tokenInfo = await esperarTokenActivacion(world, email);
+    let ultimoToken = "";
 
-    const { response, body } = await requestJson(world.baseUrl, "/auth/reset-password", {
-        method: "POST",
-        body: {
-            token: tokenInfo.token,
-            newPassword: password
+    const result = await esperarHastaQue(async () => {
+        const tokenInfo = await esperarTokenActivacion(world, email);
+        ultimoToken = tokenInfo.token ?? "";
+
+        const intento = await requestJson(world.baseUrl, "/auth/reset-password", {
+            method: "POST",
+            body: {
+                token: tokenInfo.token,
+                newPassword: password
+            }
+        });
+
+        if (intento.response.status === 400 &&
+            JSON.stringify(intento.body).includes("Token inválido")) {
+            return false;
         }
-    });
+        return intento;
+    }, { descripcion: `la activación de ${email}` });
 
-    assert.equal(response.status, 200,
-        `No se pudo activar ${email}: ${JSON.stringify(body)}`);
+    assert.equal(result.response.status, 200,
+        `No se pudo activar ${email}. Token: ${ultimoToken.slice(0, 40)}... ` +
+        `Respuesta: ${JSON.stringify(result.body)}`);
 
     world.password = password;
     return password;

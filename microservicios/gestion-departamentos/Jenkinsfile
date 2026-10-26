@@ -132,6 +132,15 @@ pipeline {
                         fileIncludePattern: 'cucumber.json',
                         buildStatus: 'UNSTABLE'
                     )
+                    publishHTML(target: [
+                        reportDir            : 'e2e-tests/reports',
+                        reportFiles          : 'cucumber.html',
+                        reportName           : 'Reporte BDD (HTML)',
+                        reportTitles         : 'Reporte BDD',
+                        keepAll              : true,
+                        alwaysLinkToLastBuild: true,
+                        allowMissing         : true
+                    ])
                     archiveArtifacts artifacts: 'e2e-tests/reports/**', allowEmptyArchive: true
                 }
                 cleanup {
