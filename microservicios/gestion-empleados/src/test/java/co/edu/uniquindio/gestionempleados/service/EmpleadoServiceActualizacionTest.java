@@ -11,7 +11,6 @@ import co.edu.uniquindio.gestionempleados.model.EstadoEmpleado;
 import co.edu.uniquindio.gestionempleados.repository.EmpleadoRepository;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -36,7 +35,6 @@ import static org.mockito.Mockito.*;
  * - reactivación de empleados pendientes,
  * - duplicados detectados por la base de datos.
  */
-@Disabled("SIMULACION-2: reducir cobertura")
 @ExtendWith(MockitoExtension.class)
 class EmpleadoServiceActualizacionTest {
 

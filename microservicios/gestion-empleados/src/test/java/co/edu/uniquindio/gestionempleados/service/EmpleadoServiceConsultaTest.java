@@ -8,7 +8,6 @@ import co.edu.uniquindio.gestionempleados.model.EstadoEmpleado;
 import co.edu.uniquindio.gestionempleados.repository.EmpleadoRepository;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,7 +26,6 @@ import static org.mockito.Mockito.*;
  *
  * Se verifica la consulta individual, consulta general y filtrado por estado.
  */
-@Disabled("SIMULACION-2: reducir cobertura")
 @ExtendWith(MockitoExtension.class)
 class EmpleadoServiceConsultaTest {
 
