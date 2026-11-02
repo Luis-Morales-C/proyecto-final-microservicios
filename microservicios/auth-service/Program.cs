@@ -52,7 +52,6 @@ builder.Services.AddAuthorization(options =>
         .RequireAuthenticatedUser()
         .RequireClaim("role")
         .RequireAssertion(ctx => !ctx.User.HasClaim(c => c.Type == "type")));
-
     options.AddPolicy("AdminOnly", policy => policy
         .RequireAuthenticatedUser()
         .RequireClaim("role", Roles.Admin)
@@ -156,7 +155,6 @@ auth.MapPost("/change-password",
     .ProducesProblem(StatusCodes.Status401Unauthorized)
     .ProducesProblem(StatusCodes.Status403Forbidden);
 
-
 if (config.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
 {
     auth.MapGet("/test/reset-token", (
@@ -172,7 +170,6 @@ if (config.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
         .WithTags("Desarrollo")
         .WithSummary("[DESARROLLO/E2E] Obtiene el último token de activación/recuperación");
 }
-
 app.Run();
 
 /// <summary>Marca con candado en Swagger los endpoints que exigen JWT.</summary>

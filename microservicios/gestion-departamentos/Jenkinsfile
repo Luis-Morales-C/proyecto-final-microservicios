@@ -1,0 +1,162 @@
+// Pipeline CI - gestion-departamentos (Python / FastAPI / pytest)
+// Checkout -> Build -> Test -> SonarQube -> Quality Gate -> Package -> Publish -> E2E
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        timeout(time: 45, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    triggers { pollSCM('H/5 * * * *') }   // disparo automático cada 5 minutos
+
+    environment {
+        SVC_DIR         = 'microservicios/gestion-departamentos'
+        IMAGE           = 'proyecto-final/gestion-departamentos'
+        COMPOSE_PROJECT = 'reto7-e2e'
+        BASE_URL        = 'http://api-gateway:8080'
+        SKIP_DB_INIT    = '1'     // main.py no debe conectarse a Postgres al importar durante los tests
+        // Testcontainers: deshabilitar Ryuk para evitar problemas de conectividad en CI
+        TESTCONTAINERS_RYUK_DISABLED = 'true'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+
+        stage('Build') {
+            steps {
+                dir(env.SVC_DIR) {
+                    sh '''
+                        python3 -m venv .venv
+                        . .venv/bin/activate
+                        pip install --quiet -r requirements-dev.txt
+                        python -m compileall -q app
+                    '''
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir(env.SVC_DIR) {
+                    // || true: dejamos llegar al post para publicar el reporte aunque haya fallos
+                    sh '''
+                        . .venv/bin/activate
+                        mkdir -p reports
+                        python -m pytest test \
+                          --junitxml=reports/junit.xml \
+                          --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing \
+                          -v || true
+                    '''
+                }
+            }
+            post {
+                always {
+                    junit testResults: "${env.SVC_DIR}/reports/junit.xml", allowEmptyResults: true
+                    recordCoverage(
+                        tools: [[parser: 'COBERTURA', pattern: "${env.SVC_DIR}/coverage.xml"]],
+                        sourceCodeRetention: 'EVERY_BUILD'
+                    )
+                    script {
+                        if (currentBuild.result == 'UNSTABLE') {
+                            error('Hay pruebas fallidas: revise la pestaña "Test Result" del build')
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    dir(env.SVC_DIR) {
+                        sh '''
+                            sonar-scanner \
+                              -Dsonar.host.url="$SONAR_HOST_URL" \
+                              -Dsonar.token="$SONAR_AUTH_TOKEN"
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                script {
+                    def sha = (env.GIT_COMMIT ?: 'local').take(7)
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sha}"
+                }
+                dir(env.SVC_DIR) {
+                    sh 'docker build -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" .'
+                }
+                sh 'docker image inspect "$IMAGE:$IMAGE_TAG" --format "Imagen construida: {{.RepoTags}} ({{.Size}} bytes)"'
+            }
+        }
+
+        stage('Publish') {
+            steps {
+                sh '''
+                    docker tag "$IMAGE:$IMAGE_TAG" "localhost:5000/$IMAGE:$IMAGE_TAG"
+                    docker tag "$IMAGE:latest"     "localhost:5000/$IMAGE:latest"
+                    docker push "localhost:5000/$IMAGE:$IMAGE_TAG"
+                    docker push "localhost:5000/$IMAGE:latest"
+                '''
+            }
+        }
+
+        stage('E2E Tests') {
+            steps {
+                sh 'bash scripts/ci-e2e-up.sh'
+                dir('e2e-tests') {
+                    sh 'npm ci --no-audit --no-fund'
+                    sh 'node support/prepare-reports.js && npx cucumber-js || true'
+                }
+            }
+            post {
+                always {
+                    junit testResults: 'e2e-tests/reports/junit.xml', allowEmptyResults: false
+                    cucumber(
+                        jsonReportDirectory: 'e2e-tests/reports',
+                        fileIncludePattern: 'cucumber.json',
+                        buildStatus: 'UNSTABLE'
+                    )
+                    publishHTML(target: [
+                        reportDir            : 'e2e-tests/reports',
+                        reportFiles          : 'cucumber.html',
+                        reportName           : 'Reporte BDD (HTML)',
+                        reportTitles         : 'Reporte BDD',
+                        keepAll              : true,
+                        alwaysLinkToLastBuild: true,
+                        allowMissing         : true
+                    ])
+                    archiveArtifacts artifacts: 'e2e-tests/reports/**', allowEmptyArchive: true
+                }
+                unstable {
+                    error('❌ Hay escenarios BDD fallando: revise Cucumber reports')
+                }
+                cleanup {
+                    sh 'bash scripts/ci-e2e-down.sh'
+                    archiveArtifacts artifacts: 'docker-logs.txt', allowEmptyArchive: true
+                }
+            }
+        }
+    }
+
+    post {
+        success  { echo 'OK: build, pruebas, calidad, imagen y E2E correctos' }
+        unstable { echo 'ATENCIÓN: compiló pero hay pruebas/escenarios fallando' }
+        failure  { echo 'FALLO: revise la etapa en rojo y sus reportes' }
+    }
+}

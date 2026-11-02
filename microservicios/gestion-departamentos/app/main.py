@@ -13,8 +13,9 @@ from app.crud import (
 from app.database import Base, engine, get_db
 from app.schemas import DepartamentoCreate, DepartamentoResponse
 
-
-Base.metadata.create_all(bind=engine)
+import os
+if os.getenv("SKIP_DB_INIT") != "1":
+    Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(

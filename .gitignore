@@ -41,3 +41,11 @@ TestResults/
 coverage*.xml
 cucumber*.json
 cucumber*.html
+
+**/obj/
+**/bin/
+.idea_backup/
+.scannerwork/
+.venv/
+docker-logs.txt
+.env.infra

@@ -115,7 +115,6 @@ public sealed class AccountEventHandler(
 
         if (configuration.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
             devTokens.Save(user.Email, token, expiraEn);
-
         logger.LogInformation(
             "Cuenta creada (INACTIVA) para {EmpleadoId}. Evento={EventId}",
             user.EmpleadoId, envelope.Id);
@@ -149,7 +148,6 @@ public sealed class AccountEventHandler(
 
         if (configuration.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
             devTokens.Remove(user.Email);
-
         publisher.Publish(
             "cuenta.desactivada",
             new CuentaDesactivadaData(

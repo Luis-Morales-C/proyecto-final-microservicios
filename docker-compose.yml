@@ -128,6 +128,7 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-CHANGEME_SECURE_COOKIE}
     ports:
       - "127.0.0.1:15672:15672"
     expose:
@@ -137,14 +138,16 @@ services:
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
     networks:
       - microservices-network
 
   rabbitmq-init:
-    image: curlimages/curl:8.16.0
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile.init
     container_name: rabbitmq-init
     environment:
       DEFINITIONS_VERSION: "reto5"   # cambiado: fuerza a re-importar definitions.json
@@ -154,9 +157,9 @@ services:
       - "--silent"
       - "--show-error"
       - "--retry"
-      - "15"
+      - "60"                          # Aumentado de 30 a 60 reintentos
       - "--retry-delay"
-      - "2"
+      - "5"                           # Aumentado de 3 a 5 segundos
       - "--retry-connrefused"
       - "--retry-all-errors"
       - "--user"
@@ -168,8 +171,6 @@ services:
       - "--data-binary"
       - "@/definitions.json"
       - "http://rabbitmq:15672/api/definitions"
-    volumes:
-      - ./rabbitmq/definitions.json:/definitions.json:ro
     depends_on:
       rabbitmq:
         condition: service_healthy

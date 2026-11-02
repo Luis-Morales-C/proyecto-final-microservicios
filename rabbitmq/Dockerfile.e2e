@@ -1,0 +1,8 @@
+FROM rabbitmq:4-management
+
+# Crear directorio para RabbitMQ con permisos correctos
+RUN mkdir -p /var/lib/rabbitmq && \
+    chown rabbitmq:rabbitmq /var/lib/rabbitmq
+
+# Configurar para que RabbitMQ use variables de entorno para la cookie
+ENV RABBITMQ_ERLANG_COOKIE=CHANGEME_SECURE_COOKIE

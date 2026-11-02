@@ -24,6 +24,24 @@ El cliente accede únicamente por el API Gateway en `http://localhost:8080`. Los
 | Vacaciones | C# / ASP.NET Core 8 | 8085 | Períodos, scheduler y eventos |
 | Auth | C# / ASP.NET Core 8 | 8086 | Identidad, contraseñas y JWT |
 
+```text
+Cliente HTTP
+     |
+     +-----------------------------+
+     |                             |
+ localhost:8080              localhost:8000
+     |                             |
+gestion-empleados --------HTTP----> gestion-departamentos
+ Java 21 / Spring                  Python 3.11 / FastAPI
+     |                             |
+     | SQL                         | SQL
+     v                             v
+database-empleados          database-departamentos
+ PostgreSQL                    PostgreSQL
+     |                             |
+ empleados-db-data       departamentos-db-data
+```
+
 Cada servicio persistente posee su propia base PostgreSQL. La comunicación síncrona entre servicios se limita principalmente a Empleados -> Departamentos; el resto del ciclo de vida se propaga mediante RabbitMQ y el exchange `rrhh.events`.
 
 ## Puesta en marcha
@@ -43,14 +61,26 @@ docker compose ps -a
 
 4. El Gateway queda en `http://localhost:8080` y RabbitMQ Management en `http://localhost:15672`.
 
+4. El Gateway queda en `http://localhost:8080` y RabbitMQ Management en `http://localhost:15672`.
+
+| Microservicio | Tecnología | Estado |
+|---------------|------------|--------|
+| API Gateway | Spring Cloud Gateway + Java 21 | 🟢 Reto 3 y 5 completos — Validación JWT y RBAC |
+| Gestión de empleados | Spring Boot + Java 21 | 🟢 Retos 1, 2, 4 completos — [Ver documentación](microservicios/gestion-empleados/README.md) |
+| Gestión de departamentos | Python 3.11 + FastAPI | 🟢 Reto 2 completo — [Ver documentación](microservicios/gestion-departamentos/README.md) |
+| Autenticación | .NET 8 + ASP.NET Core | 🟢 Reto 5 completo — [Ver documentación](microservicios/auth-service/README.md) |
+| Gestión de perfiles | Go 1.23 + Fiber | 🟢 Reto 4 completo |
+| Gestión de vacaciones | .NET 8 + ASP.NET Core | 🟢 Retos 4 y 5 completos — Scheduler implementado |
+| Notificaciones | Node.js 22 + Express | 🟢 Retos 4 y 5 completos — Integrado con eventos de seguridad |
+
 Para las pruebas E2E del Reto 6 use temporalmente `ENABLE_DEV_ENDPOINTS=true`; en uso normal manténgalo en `false`.
 
 ## Pruebas automatizadas — Reto 6
 
 | Suite | Comando | Resultados | Cobertura |
 |---|---|---|---|
-| Empleados unitarias + integración | `cd microservicios/gestion-empleados` + `.\mvnw.cmd verify` | `target/surefire-reports/*.xml` | `target/site/jacoco/jacoco.xml` |
-| Vacaciones unitarias | `cd microservicios/vacaciones-service` + `.\run-tests.ps1` | `reports/results.trx` | `reports/coverage.xml` |
+| Empleados unitarias + integración | `cd microservicios/gestion-empleados` + `./mvnw.cmd verify` | `target/surefire-reports/*.xml` | `target/site/jacoco/jacoco.xml` |
+| Vacaciones unitarias | `cd microservicios/vacaciones-service` + `./run-tests.ps1` | `reports/results.trx` | `reports/coverage.xml` |
 | BDD / E2E | `cd e2e-tests` + `npm ci` + `npm test` | `reports/junit.xml`, `reports/cucumber.json`, `reports/cucumber.html` | — |
 
 Los reportes se generan localmente y no se versionan; serán consumidos por el pipeline del reto siguiente.
@@ -610,3 +640,96 @@ curl -X PUT http://localhost:8080/perfiles/E002 \
 - Usa clave simétrica HMAC-SHA256 (académico)
 - Producción requeriría RS256/ES256 o JWKS con rotación de claves
 - `JWT_SECRET` debe estar en gestor de secretos, no en `.env`
+
+---
+
+## Reto 7 – Pipeline de CI/CD con Jenkins
+
+Implementa un pipeline completo de Integración Continua y Entrega Continua usando Jenkins, SonarQube y Docker Registry local.
+
+### Infraestructura de CI
+
+**Jenkins** (puerto 9090)
+- Configuración automática con JCasC (Jenkins Configuration as Code)
+- 2 pipelines pre-configurados: `gestion-empleados` y `gestion-departamentos`
+- Ejecutor único para evitar conflictos de puertos en E2E
+
+**SonarQube** (puerto 9000)
+- Análisis estático de calidad de código (Java y Python)
+- Quality Gates que bloquean builds con deuda técnica
+- Base de datos PostgreSQL dedicada
+
+**Docker Registry** (puerto 5000)
+- Registro local para almacenar imágenes
+- Versionado: `BUILD_NUMBER-GIT_SHA` + `latest`
+
+### Configuración Rápida
+
+```bash
+# 1. Crear .env.infra (variables de infraestructura CI)
+cp .env.infra.example .env.infra
+# Editar y completar: REPO_URL, JENKINS_ADMIN_PASSWORD, etc.
+
+# 2. Levantar infraestructura CI
+docker compose -f docker-compose.ci.yml --env-file .env.infra up -d --build
+
+# 3. Acceder a Jenkins: http://localhost:9090
+# Usuario: admin / Contraseña: la definida en JENKINS_ADMIN_PASSWORD
+
+# 4. Configurar SonarQube:
+# - Acceder: http://localhost:9000 (admin/admin)
+# - Generar token: My Account → Security → Generate Token
+# - Agregar token a .env.infra: SONAR_TOKEN=...
+# - Recrear Jenkins: docker compose -f docker-compose.ci.yml --env-file .env.infra up -d jenkins
+```
+
+### Etapas del Pipeline
+
+```text
+Checkout → Build → Test → SonarQube → Quality Gate → Package → Publish → E2E
+```
+
+**Políticas de calidad:**
+- ❌ **FAILURE**: Si fallan pruebas unitarias/integración o Quality Gate de SonarQube
+- ⚠️ **UNSTABLE**: Si fallan escenarios E2E (los reportes se publican igual)
+
+**Reportes generados:**
+- JUnit (unitarias, integración, E2E)
+- JaCoCo / Cobertura (cobertura de código)
+- Cucumber Reports (escenarios BDD)
+- Artifacts (HTML, JSON, logs de Docker)
+
+### Archivos Clave
+
+| Archivo | Propósito |
+|---------|-----------|
+| `jenkins/Dockerfile` | Imagen Jenkins + Docker + Maven + Node.js |
+| `jenkins/casc.yaml` | Configuración automática de Jenkins (JCasC) |
+| `docker-compose.ci.yml` | Infraestructura CI (Jenkins, SonarQube, Registry) |
+| `.env.infra` | Variables de infraestructura (NO versionado) |
+| `.env.ci` | Variables para pipelines (valores de prueba) |
+| `microservicios/*/Jenkinsfile` | Pipeline declarativo por microservicio |
+| `scripts/ci-e2e-up.sh` | Levanta aplicación para E2E |
+| `scripts/ci-e2e-down.sh` | Limpia después de E2E |
+| `scripts/wait-for-healthy.sh` | Espera a que el sistema esté listo |
+
+### Verificación
+
+```bash
+# Ver estado de infraestructura CI
+docker compose -f docker-compose.ci.yml ps
+
+# Ver logs de Jenkins
+docker logs -f jenkins
+
+# Ver imágenes publicadas
+curl http://localhost:5000/v2/_catalog
+```
+
+### Documentación Completa
+
+Para instrucciones detalladas, troubleshooting y conceptos avanzados, consulte:
+
+📖 **[GUIA_RETO7.md](GUIA_RETO7.md)**
+
+---

@@ -82,6 +82,8 @@ app.MapPost("/vacaciones", async (
     if (string.IsNullOrWhiteSpace(request.EmpleadoId))
         return Results.BadRequest(new ErrorResponse(true, "empleadoId es obligatorio"));
 
+    if (request.FechaFin < request.FechaInicio)
+        return Results.BadRequest(new ErrorResponse(true, "fechaFin no puede ser anterior a fechaInicio"));
     var today = DateOnly.FromDateTime(DateTime.UtcNow);
     var dateError = VacationRules.ValidarFechas(
         request.FechaInicio, request.FechaFin, today);

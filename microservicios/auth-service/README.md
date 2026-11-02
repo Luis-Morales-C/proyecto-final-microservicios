@@ -72,6 +72,7 @@ curl -s localhost:8080/auth/reset-password -H 'Content-Type: application/json' \
 # 3. Recuperación
 curl -s localhost:8080/auth/recover-password -H 'Content-Type: application/json' \
   -d '{"email":"juan.perez@empresa.com"}'
+  -d '{"email":"juan.perez@empresa.com"}'
 ```
 
 ## Ciclo de vida (diagrama de secuencia)

@@ -1,0 +1,12 @@
+En app/main.py reemplace la línea 17:
+
+    Base.metadata.create_all(bind=engine)
+
+por:
+
+    import os
+    if os.getenv("SKIP_DB_INIT") != "1":
+        Base.metadata.create_all(bind=engine)
+
+(En producción/Docker la variable no existe, así que el comportamiento no cambia.
+ En el pipeline se define SKIP_DB_INIT=1 y las pruebas usan SQLite en memoria vía conftest.py.)

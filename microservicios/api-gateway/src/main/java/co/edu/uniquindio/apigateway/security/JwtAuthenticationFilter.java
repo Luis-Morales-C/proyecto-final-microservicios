@@ -61,6 +61,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             new RouteRule(HttpMethod.GET, "/health"),
             new RouteRule(HttpMethod.POST, "/auth/login"),
             new RouteRule(HttpMethod.POST, "/auth/recover-password"),
+            new RouteRule(HttpMethod.POST, "/auth/reset-password"),
+            new RouteRule(HttpMethod.POST, "/auth/login"),
+            new RouteRule(HttpMethod.POST, "/auth/recover-password"),
             new RouteRule(HttpMethod.POST, "/auth/reset-password")
     );
 
@@ -81,7 +84,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             "/auth/docs",
             "/auth/swagger"
     );
-
     /** Métodos de solo lectura: permitidos para cualquier usuario autenticado. */
     private static final Set<HttpMethod> METODOS_LECTURA =
             Set.of(HttpMethod.GET, HttpMethod.HEAD);
@@ -189,7 +191,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 PREFIJOS_DOCUMENTACION_PUBLICA.stream().anyMatch(path::startsWith)) {
             return true;
         }
-
         return RUTAS_PUBLICAS.stream()
                 .anyMatch(regla -> regla.matches(path, method));
     }
