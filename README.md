@@ -763,7 +763,7 @@ Los siete microservicios generan información de observabilidad que es enviada a
 > Insertar aquí el diagrama de arquitectura de observabilidad.
 
 
-![img_15.png](img_15.png)
+![img_15.png](imagenes/img_15.png)
 
 
 ### Fundamentos de observabilidad
@@ -1406,12 +1406,12 @@ Con el objetivo de validar el comportamiento del sistema ante fallos controlados
 
 Para comprobar la detección de indisponibilidad de un microservicio, se detuvo de forma intencional el contenedor de `gestion-departamentos`.
 
-![img.png](img.png)
+![img.png](imagenes/img.png)
 
 ```bash
 docker stop gestion-departamentos
 ```
-![img_1.png](img_1.png)
+![img_1.png](imagenes/img_1.png)
 
 Antes de realizar la prueba, el servicio se encontraba disponible y Prometheus reportaba:
 
@@ -1445,11 +1445,11 @@ up < 1
 
 La alerta pasó primero al estado `Pending` y posteriormente a `Firing`, indicando que el servicio permanecía fuera de línea.
 
-![img_2.png](img_2.png)
+![img_2.png](imagenes/img_2.png)
 
 Además, el contact point configurado mediante Gmail envió correctamente una notificación por correo electrónico informando la caída del servicio.
 
-![img_3.png](img_3.png)
+![img_3.png](imagenes/img_3.png)
 
 El servicio fue recuperado mediante:
 
@@ -1475,7 +1475,7 @@ El segundo escenario consistió en comprobar qué ocurre cuando el broker de men
 
 RabbitMQ fue incorporado previamente como target de Prometheus mediante su endpoint de métricas en el puerto `15692`.
 
-![img_4.png](img_4.png)
+![img_4.png](imagenes/img_4.png)
 
 En condiciones normales, Prometheus registraba:
 
@@ -1499,15 +1499,15 @@ Después del siguiente ciclo de scraping, Prometheus detectó correctamente la c
 ```text
 0
 ```
-![img_6.png](img_6.png)
+![img_6.png](imagenes/img_6.png)
 
 Con RabbitMQ detenido, se realizó la creación de un empleado mediante el endpoint correspondiente de `gestion-empleados`.
 
-![img_7.png](img_7.png)
+![img_7.png](imagenes/img_7.png)
 
 El servicio logró persistir correctamente la información del empleado en PostgreSQL, pero al intentar publicar el evento `empleado.creado` se produjo un error de conexión con RabbitMQ.
 
-![img_8.png](img_8.png)
+![img_8.png](imagenes/img_8.png)
 
 Los logs centralizados en Loki permitieron observar mensajes como:
 
@@ -1554,7 +1554,7 @@ En condiciones normales, el endpoint interno de salud respondía correctamente:
 ```bash
 docker exec auth-service curl -i http://localhost:8086/health
 ```
-![img_9.png](img_9.png)
+![img_9.png](imagenes/img_9.png)
 
 con:
 
@@ -1584,7 +1584,7 @@ Posteriormente se volvió a consultar el health check:
 ```bash
 docker exec auth-service curl -i http://localhost:8086/health
 ```
-![img_10.png](img_10.png)
+![img_10.png](imagenes/img_10.png)
 
 El servicio respondió:
 
