@@ -5,6 +5,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
 using Npgsql;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using System.Diagnostics;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
@@ -35,6 +40,30 @@ builder.Services.AddSingleton<AccountService>();
 builder.Services.AddSingleton<AccountEventHandler>();
 builder.Services.AddSingleton<DevTokenStore>();
 builder.Services.AddHostedService<AuthEventWorker>();
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource =>
+        resource.AddService("auth-service"))
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = new Uri(
+                    config["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
+                    ?? "http://otel-collector:4318/v1/traces"
+                );
+                options.Protocol =
+                    OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+            });
+    })
+        .WithMetrics(m => m
+            .AddAspNetCoreInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddProcessInstrumentation()
+            .AddPrometheusExporter());
 
 // ---------- Autenticación / autorización (solo para /auth/change-password) ----------
 builder.Services
@@ -110,9 +139,65 @@ app.UseSwaggerUI(options =>
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.Use(async (context, next) =>
+{
+    await next();
+
+    var activity = Activity.Current;
+
+    var log = new
+    {
+        timestamp = DateTimeOffset.UtcNow,
+        level = "INFO",
+        service = "auth-service",
+        message = $"{context.Request.Method} {context.Request.Path} status={context.Response.StatusCode}",
+        traceId = activity?.TraceId.ToString() ?? "",
+        spanId = activity?.SpanId.ToString() ?? "",
+        method = context.Request.Method,
+        path = context.Request.Path.ToString(),
+        status = context.Response.StatusCode
+    };
+
+    Console.WriteLine(JsonSerializer.Serialize(log));
+});
+
+app.UseOpenTelemetryPrometheusScrapingEndpoint("/metrics");
+
 // ---------- Endpoints ----------
-app.MapGet("/health", () => Results.Ok(new { status = "UP" }))
-    .ExcludeFromDescription();
+app.MapGet("/health", async (
+    NpgsqlDataSource db,
+    CancellationToken ct) =>
+{
+    try
+    {
+        await using var command = db.CreateCommand("SELECT 1");
+        await command.ExecuteScalarAsync(ct);
+
+        return Results.Ok(new
+        {
+            status = "UP",
+            checks = new
+            {
+                database = "UP"
+            }
+        });
+    }
+    catch
+    {
+        return Results.Json(
+            new
+            {
+                status = "DOWN",
+                checks = new
+                {
+                    database = "DOWN"
+                }
+            },
+            statusCode: StatusCodes.Status503ServiceUnavailable
+        );
+    }
+})
+.ExcludeFromDescription();
 
 var auth = app.MapGroup("/auth").WithTags("Auth");
 

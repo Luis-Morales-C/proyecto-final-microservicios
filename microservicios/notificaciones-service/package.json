@@ -7,6 +7,9 @@
     "start": "node src/app.js"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.82.0",
+    "@prometheus-io/client": "^0.16.1",
     "amqplib": "^0.10.9",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",

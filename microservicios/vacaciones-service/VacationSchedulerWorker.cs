@@ -1,5 +1,7 @@
 namespace VacacionesService;
 
+using System.Diagnostics;
+
 public sealed class VacationSchedulerWorker(
     VacationRepository repository,
     VacationEventPublisher publisher,
@@ -22,25 +24,51 @@ public sealed class VacationSchedulerWorker(
         catch (OperationCanceledException) { /* apagado normal */ }
     }
 
-    private async Task EjecutarCicloAsync(CancellationToken ct)
+private async Task EjecutarCicloAsync(CancellationToken ct)
+{
+    using var activity = ActivitySource.StartActivity(
+        "vacaciones.scheduler.ciclo",
+        ActivityKind.Internal
+    );
+
+    activity?.SetTag("scheduler.name", "vacaciones");
+    activity?.SetTag("scheduler.trigger", "periodic");
+
+    try
     {
-        try
-        {
-            // Misma referencia de "hoy" que usa Program.cs al validar (UTC)
-            var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoy = DateOnly.FromDateTime(DateTime.UtcNow);
 
-            foreach (var v in await repository.ObtenerProgramadasParaIniciarAsync(hoy, ct))
-                await IniciarAsync(v, ct);
+        activity?.SetTag("scheduler.fecha", hoy.ToString("yyyy-MM-dd"));
 
-            foreach (var v in await repository.ObtenerEnCursoParaFinalizarAsync(hoy, ct))
-                await FinalizarAsync(v, ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            // Un fallo (BD, broker) no debe matar el scheduler: se reintenta en el siguiente tick
-            logger.LogError(ex, "Error en el ciclo del scheduler de vacaciones");
-        }
+        foreach (var v in await repository.ObtenerProgramadasParaIniciarAsync(hoy, ct))
+            await IniciarAsync(v, ct);
+
+        foreach (var v in await repository.ObtenerEnCursoParaFinalizarAsync(hoy, ct))
+            await FinalizarAsync(v, ct);
+
+        activity?.SetStatus(ActivityStatusCode.Ok);
     }
+    catch (Exception ex) when (ex is not OperationCanceledException)
+    {
+        activity?.SetStatus(
+            ActivityStatusCode.Error,
+            ex.Message
+        );
+
+        activity?.AddEvent(
+            new ActivityEvent(
+                "scheduler.error",
+                tags: new ActivityTagsCollection
+                {
+                    ["exception.type"] = ex.GetType().FullName,
+                    ["exception.message"] = ex.Message
+                }
+            )
+        );
+
+        logger.LogError(ex, "Error en el ciclo del scheduler de vacaciones");
+    }
+}
 
     public async Task<bool> IniciarAsync(Vacacion v, CancellationToken ct)
     {
@@ -71,4 +99,7 @@ public sealed class VacationSchedulerWorker(
         if (ok) logger.LogInformation("Vacación {Id} EN_CURSO -> FINALIZADA", v.Id);
         return ok;
     }
+
+    private static readonly ActivitySource ActivitySource =
+        new("VacacionesService.Scheduler");
 }

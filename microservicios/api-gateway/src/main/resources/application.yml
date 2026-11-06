@@ -60,10 +60,30 @@ management:
     web:
       base-path: "/"
       exposure:
-        include: health
+        include: health, prometheus
   endpoint:
     health:
       show-details: never
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+otel:
+  service:
+    name: ${OTEL_SERVICE_NAME:api-gateway}
+
+  traces:
+    exporter: otlp
+
+  exporter:
+    otlp:
+      protocol: http/protobuf
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://otel-collector:4318}
+
+  propagators:
+    - tracecontext
+    - baggage
 
 app:
   jwt:

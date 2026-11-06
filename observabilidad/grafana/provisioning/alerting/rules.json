@@ -1,0 +1,177 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "observabilidad-1m",
+      "folder": "Observabilidad",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "alert-servicio-caido-prov",
+          "title": "Servicio caído - provisionado",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "PBFA97CFB590B2093",
+              "model": {
+                "editorMode": "code",
+                "expr": "up",
+                "instant": true,
+                "intervalMs": 1000,
+                "legendFormat": "__auto",
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        1
+                      ],
+                      "type": "lt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              }
+            }
+          ],
+          "noDataState": "NoData",
+          "execErrState": "Error",
+          "for": "1m",
+          "annotations": {
+            "description": "Prometheus detectó que el valor de up es menor que 1 para uno de los servicios monitoreados. Verificar el estado del contenedor y revisar métricas, logs y trazas relacionadas.",
+            "summary": "Uno o más servicios no están disponibles"
+          },
+          "labels": {
+            "severity": "critical"
+          },
+          "isPaused": false,
+          "notification_settings": {
+            "receiver": "observabilidad-gmail-provisionado"
+          }
+        },
+        {
+          "uid": "alert-alta-latencia-prov",
+          "title": "Alta Latencia - provisionada",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "PBFA97CFB590B2093",
+              "model": {
+                "editorMode": "code",
+                "expr": "(\n  sum by (job) (rate(http_server_requests_seconds_sum[5m]))\n  /\n  sum by (job) (rate(http_server_requests_seconds_count[5m]))\n)\nor\n(\n  sum by (job) (rate(http_request_duration_seconds_sum[5m]))\n  /\n  sum by (job) (rate(http_request_duration_seconds_count[5m]))\n)\nor\n(\n  sum by (job) (rate(http_server_request_duration_seconds_sum[5m]))\n  /\n  sum by (job) (rate(http_server_request_duration_seconds_count[5m]))\n)",
+                "instant": true,
+                "intervalMs": 1000,
+                "legendFormat": "__auto",
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        2
+                      ],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              }
+            }
+          ],
+          "noDataState": "NoData",
+          "execErrState": "Error",
+          "for": "2m",
+          "annotations": {
+            "description": "Grafana detectó que la latencia promedio de respuesta superó los 2 segundos durante el período configurado. Revisar el dashboard de Grafana, los logs en Loki y las trazas en Zipkin para identificar el servicio afectado y la causa del incremento de latencia.",
+            "summary": "Alta latencia detectada en uno o más servicios"
+          },
+          "labels": {
+            "severity": "warning"
+          },
+          "isPaused": false,
+          "notification_settings": {
+            "receiver": "observabilidad-gmail-provisionado"
+          }
+        }
+      ]
+    }
+  ]
+}

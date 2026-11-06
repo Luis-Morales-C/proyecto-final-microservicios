@@ -5,6 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.context.Context;
+import io.opentelemetry.context.propagation.TextMapSetter;
+import org.springframework.amqp.core.Message;
 
 @Component
 public class EmpleadoEventPublisher {
@@ -16,8 +20,14 @@ public class EmpleadoEventPublisher {
 
     private final RabbitTemplate rabbitTemplate;
 
-    public EmpleadoEventPublisher(RabbitTemplate rabbitTemplate) {
+    private final OpenTelemetry openTelemetry;
+
+    public EmpleadoEventPublisher(
+            RabbitTemplate rabbitTemplate,
+            OpenTelemetry openTelemetry
+    ) {
         this.rabbitTemplate = rabbitTemplate;
+        this.openTelemetry = openTelemetry;
     }
 
     public void publicarCreado(Empleado empleado) {
@@ -42,7 +52,19 @@ public class EmpleadoEventPublisher {
             rabbitTemplate.convertAndSend(
                     EXCHANGE,
                     evento.type(),
-                    evento
+                    evento,
+                    message -> {
+                        openTelemetry
+                                .getPropagators()
+                                .getTextMapPropagator()
+                                .inject(
+                                        Context.current(),
+                                        message,
+                                        SETTER
+                                );
+
+                        return message;
+                    }
             );
 
             log.info(
@@ -61,4 +83,12 @@ public class EmpleadoEventPublisher {
             );
         }
     }
+
+    private static final TextMapSetter<Message> SETTER =
+            (carrier, key, value) -> {
+                if (carrier != null) {
+                    carrier.getMessageProperties()
+                            .setHeader(key, value);
+                }
+            };
 }

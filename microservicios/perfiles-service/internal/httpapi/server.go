@@ -9,9 +9,13 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"os"
 
 	"perfiles-service/internal/model"
 	"perfiles-service/internal/repository"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/trace"
 )
 
 //go:embed openapi.json
@@ -29,18 +33,51 @@ type Server struct {
 	repo *repository.Repository
 }
 
+var (
+    httpRequestsTotal = prometheus.NewCounterVec(
+        prometheus.CounterOpts{
+            Name: "http_requests_total",
+            Help: "Número total de peticiones HTTP recibidas",
+        },
+        []string{"method", "path", "status"},
+    )
+
+    httpRequestDuration = prometheus.NewHistogramVec(
+        prometheus.HistogramOpts{
+            Name: "http_request_duration_seconds",
+            Help: "Duración de las peticiones HTTP en segundos",
+        },
+        []string{"method", "path"},
+    )
+)
+
+func init() {
+    prometheus.MustRegister(httpRequestsTotal)
+    prometheus.MustRegister(httpRequestDuration)
+}
+
+type statusRecorder struct {
+    http.ResponseWriter
+    status int
+}
+
+func (r *statusRecorder) WriteHeader(status int) {
+    r.status = status
+    r.ResponseWriter.WriteHeader(status)
+}
+
 func New(repo *repository.Repository) http.Handler {
 	s := &Server{repo: repo}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.health)
+	mux.Handle("GET /metrics", promhttp.Handler())
 	mux.HandleFunc("GET /perfiles", s.listar)
 	mux.HandleFunc("GET /perfiles/{empleadoId}", s.consultar)
 	mux.HandleFunc("PUT /perfiles/{empleadoId}", s.actualizar)
 	mux.HandleFunc("GET /perfiles/openapi.json", s.openapi)
 	mux.HandleFunc("GET /perfiles/docs", s.docs)
 	mux.HandleFunc("GET /perfiles/docs/", s.docs)
-	return loggingJSON(mux)
-}
+    return metricsMiddleware(loggingJSON(mux))}
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
@@ -125,10 +162,64 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 
 func loggingJSON(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/perfiles") || r.URL.Path == "/health" {
+		if strings.HasPrefix(r.URL.Path, "/perfiles") ||
+			r.URL.Path == "/health" ||
+			r.URL.Path == "/metrics" {
+
 			next.ServeHTTP(w, r)
 			return
 		}
+
 		writeError(w, http.StatusNotFound, "Recurso no encontrado")
 	})
+}
+
+func metricsMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        start := time.Now()
+
+        recorder := &statusRecorder{
+            ResponseWriter: w,
+            status:         http.StatusOK,
+        }
+
+        next.ServeHTTP(recorder, r)
+
+        spanContext := trace.SpanContextFromContext(r.Context())
+
+        traceID := ""
+        spanID := ""
+
+        if spanContext.IsValid() {
+        	traceID = spanContext.TraceID().String()
+        	spanID = spanContext.SpanID().String()
+        }
+
+        logEntry := map[string]any{
+        	"timestamp": time.Now().UTC().Format(time.RFC3339Nano),
+        	"level":     "INFO",
+        	"service":   "perfiles-service",
+        	"message":   fmt.Sprintf("%s %s status=%d", r.Method, r.URL.Path, recorder.status),
+        	"traceId":   traceID,
+        	"spanId":    spanID,
+        	"method":    r.Method,
+        	"path":      r.URL.Path,
+        	"status":    recorder.status,
+        }
+
+        _ = json.NewEncoder(os.Stdout).Encode(logEntry)
+
+        path := r.URL.Path
+
+        httpRequestsTotal.WithLabelValues(
+            r.Method,
+            path,
+            fmt.Sprintf("%d", recorder.status),
+        ).Inc()
+
+        httpRequestDuration.WithLabelValues(
+            r.Method,
+            path,
+        ).Observe(time.Since(start).Seconds())
+    })
 }

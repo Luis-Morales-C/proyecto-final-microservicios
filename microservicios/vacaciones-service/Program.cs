@@ -1,11 +1,47 @@
 using Microsoft.OpenApi.Models;
 using Npgsql;
 using VacacionesService;
+using System.Diagnostics;
+using System.Text.Json;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<VacationSchedulerWorker>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<VacationSchedulerWorker>());
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource =>
+        resource.AddService("vacaciones-service"))
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddSource("VacacionesService.Scheduler")
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = new Uri(
+                    builder.Configuration["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
+                    ?? "http://otel-collector:4318/v1/traces"
+                );
+
+                options.Protocol =
+                    OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+            });
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddRuntimeInstrumentation()
+            .AddPrometheusExporter()
+            .AddProcessInstrumentation();
+    });
+
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -65,6 +101,30 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = "vacaciones/docs";
     options.SwaggerEndpoint("/vacaciones/swagger/v1/swagger.json", "Vacaciones API v1");
 });
+
+app.Use(async (context, next) =>
+{
+    await next();
+
+    var activity = Activity.Current;
+
+    var log = new
+    {
+        timestamp = DateTimeOffset.UtcNow,
+        level = "INFO",
+        service = "vacaciones-service",
+        message = $"{context.Request.Method} {context.Request.Path} status={context.Response.StatusCode}",
+        traceId = activity?.TraceId.ToString() ?? "",
+        spanId = activity?.SpanId.ToString() ?? "",
+        method = context.Request.Method,
+        path = context.Request.Path.ToString(),
+        status = context.Response.StatusCode
+    };
+
+    Console.WriteLine(JsonSerializer.Serialize(log));
+});
+
+app.UseOpenTelemetryPrometheusScrapingEndpoint("/metrics");
 
 app.MapGet("/health", async (VacationRepository repository, CancellationToken ct) =>
 {
@@ -162,7 +222,6 @@ app.MapDelete("/vacaciones/{id}", async (
 
 if (app.Configuration.GetValue<bool>("ENABLE_DEV_ENDPOINTS"))
 {
-    // ⚠️ SOLO DESARROLLO: dispara las transiciones sin esperar al scheduler.
     static bool EsAdmin(HttpRequest r) =>
         string.Equals(r.Headers["X-User-Role"], "ADMIN", StringComparison.OrdinalIgnoreCase);
 

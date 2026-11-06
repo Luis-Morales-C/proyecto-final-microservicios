@@ -1,0 +1,51 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "api-gateway"
+    metrics_path: "/prometheus"
+    static_configs:
+      - targets:
+          - "api-gateway:8080"
+
+  - job_name: "gestion-empleados"
+    metrics_path: "/prometheus"
+    static_configs:
+      - targets:
+          - "gestion-empleados:8081"
+
+  - job_name: "gestion-departamentos"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "gestion-departamentos:8082"
+
+  - job_name: "perfiles-service"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "perfiles-service:8084"
+
+  - job_name: "auth-service"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "auth-service:8086"
+
+  - job_name: "vacaciones-service"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "vacaciones-service:8085"
+
+  - job_name: "notificaciones-service"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "notificaciones-service:8083"
+
+  - job_name: rabbitmq
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - rabbitmq:15692

@@ -69,7 +69,7 @@ services:
     container_name: docker-registry
     restart: unless-stopped
     ports:
-      - "5000:5000"      # En macOS el puerto 5000 lo usa AirPlay: cambie a 5001:5000 y el Jenkinsfile
+      - "5001:5000"      # En macOS el puerto 5000 lo usa AirPlay: cambie a 5001:5000 y el Jenkinsfile
     volumes:
       - registry_data:/var/lib/registry
     networks:

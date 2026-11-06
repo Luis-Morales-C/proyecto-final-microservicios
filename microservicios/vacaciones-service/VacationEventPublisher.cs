@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using RabbitMQ.Client;
+using System.Diagnostics;
 
 namespace VacacionesService;
 
@@ -52,6 +53,19 @@ public sealed class VacationEventPublisher : IDisposable
                 var properties = _channel!.CreateBasicProperties();
                 properties.Persistent = true;
                 properties.ContentType = "application/json";
+
+                properties.Headers ??= new Dictionary<string, object>();
+
+                var activity = Activity.Current;
+
+                if (activity is not null)
+                {
+                    var traceParent =
+                        $"00-{activity.TraceId}-{activity.SpanId}-{(activity.ActivityTraceFlags.HasFlag(ActivityTraceFlags.Recorded) ? "01" : "00")}";
+
+                    properties.Headers["traceparent"] =
+                        Encoding.UTF8.GetBytes(traceParent);
+                }
 
                 _channel.BasicPublish(Exchange, routingKey, mandatory: false,
                     basicProperties: properties, body: body);

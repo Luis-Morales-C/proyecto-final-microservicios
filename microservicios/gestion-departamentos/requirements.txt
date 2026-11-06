@@ -4,3 +4,9 @@ sqlalchemy
 psycopg2-binary
 pytest
 httpx
+prometheus-fastapi-instrumentator
+opentelemetry-distro
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-asgi
+opentelemetry-instrumentation-sqlalchemy

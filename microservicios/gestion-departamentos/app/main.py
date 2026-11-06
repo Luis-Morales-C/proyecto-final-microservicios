@@ -2,8 +2,16 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
+from prometheus_fastapi_instrumentator import Instrumentator
+import json
+import logging
+import sys
+from datetime import datetime, timezone
+
+from opentelemetry import trace
 
 from app.crud import (
     crear_departamento,
@@ -28,6 +36,25 @@ app = FastAPI(
     docs_url="/departamentos/docs",
     redoc_url="/departamentos/redoc",
     openapi_url="/departamentos/openapi.json"
+)
+
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    response = await call_next(request)
+
+    logger.info(
+        "%s %s status=%s",
+        request.method,
+        request.url.path,
+        response.status_code
+    )
+
+    return response
+
+Instrumentator().instrument(app).expose(
+    app,
+    endpoint="/metrics",
+    include_in_schema=False
 )
 
 
@@ -188,6 +215,33 @@ async def general_exception_handler(
         }
     )
 
+@app.get(
+    "/health",
+    include_in_schema=False
+)
+def health(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+
+        return {
+
+            "status": "UP",
+            "checks": {
+                "database": "UP"
+            }
+        }
+
+    except Exception:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "DOWN",
+                "checks": {
+                    "database": "DOWN"
+                }
+            }
+        )
+
 
 @app.post(
     "/departamentos",
@@ -311,3 +365,40 @@ def listar_departamentos(
         db: Session = Depends(get_db)
 ):
     return obtener_departamentos(db)
+
+class JsonFormatter(logging.Formatter):
+
+    def format(self, record):
+        span = trace.get_current_span()
+        span_context = span.get_span_context()
+
+        trace_id = ""
+        span_id = ""
+
+        if span_context.is_valid:
+            trace_id = format(span_context.trace_id, "032x")
+            span_id = format(span_context.span_id, "016x")
+
+        log_record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
+            "service": "gestion-departamentos",
+            "message": record.getMessage(),
+            "traceId": trace_id,
+            "spanId": span_id,
+        }
+
+        return json.dumps(
+            log_record,
+            ensure_ascii=False
+        )
+
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(JsonFormatter())
+
+logger = logging.getLogger("gestion-departamentos")
+logger.setLevel(logging.INFO)
+logger.handlers.clear()
+logger.addHandler(handler)
+logger.propagate = False

@@ -733,3 +733,898 @@ Para instrucciones detalladas, troubleshooting y conceptos avanzados, consulte:
 📖 **[GUIA_RETO7.md](GUIA_RETO7.md)**
 
 ---
+
+# Reto 8 – Observabilidad y monitoreo
+
+El proyecto cuenta con una solución de observabilidad que permite supervisar el estado de los microservicios mediante **métricas, logs centralizados, trazas distribuidas, health checks y alertas**.
+
+El stack utilizado está compuesto por:
+
+- **Prometheus** para la recolección y consulta de métricas.
+- **Grafana** para la visualización de métricas y configuración de alertas.
+- **Loki** para el almacenamiento centralizado de logs.
+- **Promtail** para recolectar los logs generados por los contenedores.
+- **OpenTelemetry** para la instrumentación y propagación de trazas.
+- **OpenTelemetry Collector** para recibir las trazas de los servicios.
+- **Zipkin** para visualizar las trazas distribuidas.
+- **RabbitMQ Prometheus Plugin** para monitorear el broker de mensajería.
+- **Gmail SMTP** como canal de notificación para las alertas de Grafana.
+
+### Arquitectura de observabilidad
+
+Los siete microservicios generan información de observabilidad que es enviada a los diferentes componentes del stack.
+
+- Las métricas son recolectadas por Prometheus.
+- Los logs de los contenedores son recolectados por Promtail y enviados a Loki.
+- Las trazas se exportan mediante OpenTelemetry hacia el OpenTelemetry Collector y posteriormente a Zipkin.
+- Grafana utiliza Prometheus y Loki como fuentes de datos para centralizar la visualización.
+- Grafana Alerting permite detectar fallos y enviar notificaciones por correo electrónico.
+
+> Insertar aquí el diagrama de arquitectura de observabilidad.
+
+
+![img_15.png](img_15.png)
+
+
+### Fundamentos de observabilidad
+
+La solución implementada se apoya en los tres pilares principales de la observabilidad: **métricas, logs y trazas**.
+
+- **Métricas:** permiten conocer el comportamiento general del sistema mediante valores numéricos como disponibilidad, cantidad de solicitudes, tasa de errores, latencia, uso de CPU y memoria. En este proyecto son recolectadas principalmente por Prometheus.
+- **Logs:** permiten analizar eventos concretos ocurridos dentro de cada servicio. Los microservicios generan logs estructurados en JSON y Promtail los envía a Loki para su consulta centralizada desde Grafana.
+- **Trazas:** permiten seguir una operación completa mientras atraviesa diferentes microservicios, bases de datos y componentes asíncronos. OpenTelemetry genera y propaga este contexto y Zipkin permite visualizarlo.
+
+El uso conjunto de estos tres pilares facilita pasar desde una visión general del estado del sistema hasta el análisis detallado de una solicitud específica.
+
+#### Modelo Pull y Push
+
+La arquitectura utiliza ambos modelos de recolección de telemetría.
+
+**Prometheus utiliza principalmente un modelo Pull.** Esto significa que Prometheus consulta periódicamente los endpoints de métricas de cada servicio, por ejemplo `/metrics` o `/prometheus`, y obtiene los valores disponibles.
+
+```text
+Prometheus
+    ↓ consulta
+Microservicio /metrics
+```
+
+En cambio, las **trazas utilizan un modelo Push**. Cada servicio instrumentado envía sus spans mediante OTLP/HTTP hacia OpenTelemetry Collector.
+
+```text
+Microservicio
+    ↓ envía spans
+OpenTelemetry Collector
+    ↓
+Zipkin
+```
+
+Esta diferencia permite que Prometheus controle el ritmo de recolección de métricas, mientras que las trazas son enviadas cuando las operaciones ocurren.
+
+#### OpenTelemetry y CNCF
+
+OpenTelemetry se utilizó como estándar común de instrumentación para los diferentes lenguajes presentes en la arquitectura.
+
+OpenTelemetry es un proyecto de la **Cloud Native Computing Foundation (CNCF)** y proporciona APIs, SDKs y protocolos para trabajar con telemetría de forma independiente del proveedor de almacenamiento o visualización.
+
+Esto resulta especialmente importante en una arquitectura políglota como esta, porque permite instrumentar servicios desarrollados en Java, Python, Node.js, Go y .NET utilizando un mismo enfoque.
+
+Además, evita acoplar los microservicios directamente a Zipkin. Los servicios exportan sus trazas mediante OTLP hacia OpenTelemetry Collector y el Collector es quien las envía posteriormente al backend seleccionado.
+
+```text
+Microservicios
+      ↓ OTLP
+OpenTelemetry Collector
+      ↓
+Zipkin
+```
+
+Por esta razón, si en el futuro se reemplazara Zipkin por otro backend compatible, sería posible hacerlo con cambios mínimos en los microservicios.
+
+#### W3C Trace Context
+
+Para mantener el contexto de una misma operación entre diferentes servicios se utiliza el estándar **W3C Trace Context**.
+
+El principal header utilizado es:
+
+```text
+traceparent
+```
+
+Este header transporta información como el identificador de la traza, el identificador del span padre y los flags de trazabilidad.
+
+Gracias a este mecanismo, una solicitud puede mantener el mismo `Trace ID` mientras atraviesa el API Gateway, los microservicios y también comunicaciones asíncronas mediante RabbitMQ.
+
+
+### Levantar el stack
+
+Todo el entorno se encuentra definido mediante Docker Compose.
+
+Desde la raíz del proyecto se puede iniciar la arquitectura completa con:
+
+```bash
+docker compose up -d
+```
+
+Para reconstruir los servicios después de realizar modificaciones:
+
+```bash
+docker compose up -d --build
+```
+
+El estado de los contenedores puede verificarse mediante:
+
+```bash
+docker ps
+```
+
+Para detener el entorno:
+
+```bash
+docker compose down
+```
+
+---
+
+### Puertos principales
+
+| Componente | Puerto | Uso |
+|---|---:|---|
+| API Gateway | 8080 | Punto de entrada a la arquitectura |
+| gestion-empleados | 8081 | Servicio de empleados |
+| gestion-departamentos | 8082 | Servicio de departamentos |
+| notificaciones-service | 8083 | Servicio de notificaciones |
+| perfiles-service | 8084 | Servicio de perfiles |
+| vacaciones-service | 8085 | Servicio de vacaciones |
+| auth-service | 8086 | Servicio de autenticación |
+| Grafana | 3000 | Dashboards y alertas |
+| Prometheus | 9091 | Métricas |
+| Loki | 3100 | Almacenamiento de logs |
+| OpenTelemetry Collector | 4318 | Recepción de trazas OTLP/HTTP |
+| Zipkin | 9411 | Visualización de trazas |
+| RabbitMQ | 5672 | Comunicación AMQP |
+| RabbitMQ Management | 15672 | Interfaz de administración |
+| RabbitMQ Prometheus | 15692 | Métricas del broker |
+
+---
+
+### Health checks
+
+Cada microservicio expone un endpoint `/health` para verificar su estado.
+
+Los servicios pueden responder con:
+
+```text
+HTTP 200
+```
+
+cuando se encuentran disponibles, o:
+
+```text
+HTTP 503
+```
+
+cuando una dependencia crítica no está disponible.
+
+Los endpoints internos son:
+
+| Servicio | Endpoint |
+|---|---|
+| API Gateway | `http://api-gateway:8080/health` |
+| gestion-empleados | `http://gestion-empleados:8081/health` |
+| gestion-departamentos | `http://gestion-departamentos:8082/health` |
+| notificaciones-service | `http://notificaciones-service:8083/health` |
+| perfiles-service | `http://perfiles-service:8084/health` |
+| vacaciones-service | `http://vacaciones-service:8085/health` |
+| auth-service | `http://auth-service:8086/health` |
+
+Por ejemplo, cuando `auth-service` funciona correctamente puede responder:
+
+```json
+{
+  "status": "UP",
+  "checks": {
+    "database": "UP"
+  }
+}
+```
+
+Si su base de datos deja de estar disponible, el mismo endpoint responde con HTTP `503`:
+
+```json
+{
+  "status": "DOWN",
+  "checks": {
+    "database": "DOWN"
+  }
+}
+```
+
+---
+
+### Métricas con Prometheus
+
+Los microservicios exponen métricas compatibles con Prometheus.
+
+Dependiendo de la tecnología utilizada, los endpoints son `/metrics` o `/prometheus`.
+
+| Servicio | Endpoint de métricas |
+|---|---|
+| API Gateway | `/prometheus` |
+| gestion-empleados | `/prometheus` |
+| gestion-departamentos | `/metrics` |
+| notificaciones-service | `/metrics` |
+| perfiles-service | `/metrics` |
+| vacaciones-service | `/metrics` |
+| auth-service | `/metrics` |
+| RabbitMQ | `:15692/metrics` |
+
+Prometheus se encuentra disponible en:
+
+```text
+http://localhost:9091
+```
+
+Desde **Status / Targets** se puede comprobar que cada componente monitoreado se encuentre en estado `UP`.
+
+Entre las métricas utilizadas se encuentran:
+
+- disponibilidad de los servicios;
+- cantidad de solicitudes HTTP;
+- respuestas HTTP 4xx y 5xx;
+- latencia promedio;
+- percentil 95 de latencia;
+- consumo de CPU;
+- consumo de memoria.
+
+---
+
+### Dashboard de Grafana
+
+Grafana se encuentra disponible en:
+
+```text
+http://localhost:3000
+```
+
+Se creó el dashboard:
+
+```text
+Estado del servicio
+```
+
+que permite visualizar:
+
+- disponibilidad de los servicios;
+- solicitudes HTTP por servicio;
+- errores HTTP por servicio;
+- latencia promedio;
+- latencia p95;
+- uso de CPU;
+- uso de memoria.
+
+El dashboard fue exportado y se encuentra versionado dentro del proyecto en:
+
+```text
+observabilidad/grafana/dashboards/Estado-servicio.json
+```
+
+Prometheus está configurado como fuente de datos de Grafana utilizando:
+
+```text
+http://prometheus:9090
+```
+
+
+### Aprovisionamiento automático de Grafana
+
+Para que la configuración sea reproducible y no dependa de configuraciones realizadas manualmente desde la interfaz de Grafana, se implementó **provisioning mediante archivos versionados en el repositorio**.
+
+Al iniciar Grafana, este carga automáticamente la configuración definida dentro de:
+
+```text
+observabilidad/grafana/provisioning/
+```
+
+Se aprovisionan los siguientes recursos:
+
+- datasource de Prometheus;
+- datasource de Loki;
+- dashboard `Estado del servicio`;
+- reglas de alerta;
+- contact point de correo electrónico.
+
+El provider del dashboard busca los archivos JSON almacenados en:
+
+```text
+observabilidad/grafana/dashboards/
+```
+
+Por lo tanto, una persona que clone el repositorio y ejecute:
+
+```bash
+docker compose up -d --build
+```
+
+obtendrá automáticamente el dashboard y los recursos de Grafana definidos en el proyecto, sin tener que recrearlos manualmente desde la interfaz.
+
+Las credenciales sensibles necesarias para SMTP se reciben mediante variables de entorno y no se almacenan directamente en los archivos versionados.
+
+
+---
+
+### Logs centralizados con Loki
+
+Los servicios generan logs estructurados en formato JSON.
+
+Los logs incluyen, cuando aplica, campos como:
+
+```json
+{
+  "timestamp": "...",
+  "level": "INFO",
+  "service": "auth-service",
+  "message": "POST /auth/login status=200",
+  "traceId": "...",
+  "spanId": "...",
+  "method": "POST",
+  "path": "/auth/login",
+  "status": 200
+}
+```
+
+Promtail recolecta los logs de los contenedores Docker y los envía a Loki.
+
+Loki está configurado como datasource de Grafana mediante:
+
+```text
+http://loki:3100
+```
+
+Los logs pueden consultarse desde:
+
+```text
+Grafana → Explore → Loki
+```
+
+Por ejemplo, para visualizar los logs de `auth-service`:
+
+```logql
+{container="auth-service"}
+```
+
+Para interpretar los campos JSON:
+
+```logql
+{container="auth-service"} | json
+```
+
+Para consultar únicamente logs de nivel `INFO`:
+
+```logql
+{container="auth-service"} | json | level="INFO"
+```
+
+También es posible buscar los logs asociados a una traza específica:
+
+```logql
+{container="auth-service"} | json | traceId="TRACE_ID"
+```
+
+Esto permite relacionar los logs de una operación con la traza correspondiente en Zipkin.
+
+---
+
+
+### Librerías de observabilidad utilizadas por microservicio
+
+Debido a que la solución está construida con diferentes lenguajes y frameworks, cada servicio utiliza librerías adaptadas a su tecnología.
+
+| Servicio | Tecnología | Métricas | Trazas | Logs estructurados |
+|---|---|---|---|---|
+| API Gateway | Spring Boot / Spring Cloud Gateway | Spring Boot Actuator + Micrometer Prometheus | OpenTelemetry Spring Boot Starter | Logback + Logstash Encoder |
+| gestion-empleados | Spring Boot | Spring Boot Actuator + Micrometer Prometheus | OpenTelemetry Spring Boot Starter | Logback + Logstash Encoder |
+| gestion-departamentos | FastAPI / Python | `prometheus-fastapi-instrumentator` | OpenTelemetry para FastAPI/Uvicorn | logging estructurado en JSON |
+| notificaciones-service | Node.js | cliente Prometheus para Node.js | OpenTelemetry Node.js Auto Instrumentation | logs JSON |
+| perfiles-service | Go | Prometheus Client para Go | OpenTelemetry Go | logs JSON |
+| vacaciones-service | .NET 8 | OpenTelemetry Prometheus ASP.NET + Runtime + Process instrumentation | OpenTelemetry ASP.NET Core, HTTP y OTLP | logs estructurados en JSON |
+| auth-service | .NET 8 | OpenTelemetry Prometheus ASP.NET + Runtime + Process instrumentation | OpenTelemetry ASP.NET Core, HTTP y OTLP | logs estructurados en JSON |
+
+Además de la instrumentación HTTP, los servicios que publican o consumen eventos mediante RabbitMQ propagan el contexto de trazabilidad utilizando `traceparent`.
+
+
+### Trazas distribuidas con OpenTelemetry y Zipkin
+
+Los microservicios utilizan OpenTelemetry para generar y propagar el contexto de trazabilidad.
+
+Las trazas son enviadas mediante OTLP/HTTP hacia:
+
+```text
+OpenTelemetry Collector :4318
+```
+
+El Collector posteriormente las exporta hacia Zipkin.
+
+Zipkin se encuentra disponible en:
+
+```text
+http://localhost:9411
+```
+
+Las trazas permiten observar el recorrido completo de una solicitud entre varios servicios.
+
+Por ejemplo:
+
+```text
+API Gateway
+    ↓
+gestion-empleados
+    ↓
+RabbitMQ
+    ↓
+notificaciones-service
+    ↓
+PostgreSQL
+```
+
+El contexto de trazabilidad también se propaga mediante RabbitMQ utilizando el header estándar:
+
+```text
+traceparent
+```
+
+Esto permite mantener el mismo `Trace ID` incluso cuando la comunicación entre servicios es asíncrona.
+
+Se validaron, entre otros, los siguientes flujos:
+
+```text
+API Gateway → gestion-empleados → RabbitMQ → notificaciones-service
+API Gateway → vacaciones-service → RabbitMQ → notificaciones-service
+API Gateway → auth-service → RabbitMQ → notificaciones-service
+```
+
+---
+
+
+### Elección de Zipkin frente a Jaeger
+
+Para este reto se eligió **Zipkin** como backend de visualización de trazas distribuidas.
+
+Tanto Zipkin como Jaeger permiten analizar trazas distribuidas y pueden integrarse con OpenTelemetry. Sin embargo, para el alcance de este proyecto se priorizó Zipkin por las siguientes razones:
+
+- su despliegue mediante Docker es sencillo;
+- requiere poca configuración inicial;
+- permite visualizar servicios, trazas y spans de forma suficiente para las pruebas requeridas;
+- se integra directamente con OpenTelemetry Collector;
+- resulta adecuado para un entorno académico y local donde el objetivo principal es demostrar correlación y trazabilidad entre microservicios.
+
+Jaeger también habría sido una alternativa válida, especialmente en escenarios que requieran capacidades más amplias de operación y análisis. Sin embargo, Zipkin cubre completamente las necesidades definidas para este reto con una configuración más simple.
+
+
+### Tracing del scheduler de vacaciones
+
+El servicio `vacaciones-service` contiene un scheduler periódico encargado de cambiar automáticamente el estado de las vacaciones.
+
+Como este proceso no se origina a partir de una petición HTTP, se creó un span raíz propio mediante OpenTelemetry.
+
+El span generado se identifica como:
+
+```text
+vacaciones.scheduler.ciclo
+```
+
+e incluye información como:
+
+```text
+scheduler.name = vacaciones
+scheduler.trigger = periodic
+scheduler.fecha = YYYY-MM-DD
+```
+
+Esto permite observar en Zipkin las ejecuciones internas del scheduler y relacionarlas con los eventos publicados mediante RabbitMQ.
+
+---
+
+### Alertas
+
+Grafana Alerting se configuró para detectar la indisponibilidad de los servicios.
+
+La regla utilizada evalúa la métrica:
+
+```promql
+up
+```
+
+y dispara una alerta cuando:
+
+```text
+up < 1
+```
+
+El comportamiento configurado es:
+
+```text
+Servicio disponible
+up = 1
+    ↓
+Normal
+
+Servicio no disponible
+up = 0
+    ↓
+Pending
+    ↓
+Firing
+```
+
+La regla utiliza un período pendiente de un minuto para evitar generar alertas ante fallos extremadamente breves.
+
+El nivel de severidad configurado es:
+
+```text
+severity = critical
+```
+
+---
+
+
+### Alerta de alta latencia
+
+Además de la detección de servicios caídos, se configuró una segunda regla para identificar incrementos importantes en el tiempo promedio de respuesta.
+
+La regla calcula la latencia promedio utilizando las métricas disponibles según la tecnología de cada microservicio y evalúa si el valor supera:
+
+```text
+2 segundos
+```
+
+La condición debe mantenerse durante:
+
+```text
+2 minutos
+```
+
+antes de pasar al estado `Firing`.
+
+El nivel de severidad utilizado para esta regla es:
+
+```text
+severity = warning
+```
+
+Esta alerta permite detectar servicios que continúan disponibles pero presentan una degradación importante en su rendimiento.
+
+Las dos reglas configuradas son:
+
+| Regla | Condición | Pending | Severidad |
+|---|---|---:|---|
+| Servicio caído | `up < 1` | 1 minuto | `critical` |
+| Alta Latencia | latencia promedio `> 2 s` | 2 minutos | `warning` |
+
+Ambas reglas se encuentran también definidas mediante provisioning, por lo que pueden ser cargadas automáticamente por Grafana durante el arranque del entorno.
+
+
+### Notificaciones por correo
+
+Grafana utiliza un contact point de tipo `Email`.
+
+El envío se realiza mediante SMTP de Gmail y permite recibir una notificación cuando una regla entra en estado `Firing`.
+
+El flujo de alerta es:
+
+```text
+Prometheus
+    ↓
+Grafana Alerting
+    ↓
+Regla up < 1
+    ↓
+Estado Firing
+    ↓
+Contact point Gmail
+    ↓
+Correo electrónico
+```
+
+El funcionamiento fue comprobado deteniendo intencionalmente un microservicio. Prometheus detectó el cambio de `up = 1` a `up = 0`, Grafana activó la alerta y posteriormente se recibió el correo electrónico correspondiente.
+
+Las credenciales SMTP no se almacenan directamente en el código fuente y se configuran mediante variables de entorno.
+
+---
+
+### Correlación entre métricas, logs y trazas
+
+La solución implementada permite utilizar conjuntamente las tres fuentes principales de observabilidad.
+
+Ante un incidente se puede seguir un flujo como:
+
+```text
+1. Grafana detecta un comportamiento anormal mediante una métrica.
+
+2. Prometheus permite identificar qué servicio está afectado.
+
+3. Loki permite consultar los logs del servicio.
+
+4. El traceId presente en los logs puede utilizarse para localizar la operación en Zipkin.
+
+5. Zipkin permite observar el recorrido completo de la solicitud entre los diferentes componentes.
+```
+
+De esta manera se puede pasar desde una alerta general hasta el análisis detallado de una operación específica.
+
+---
+
+
+### Análisis del servicio con mayor tiempo de respuesta
+
+Durante las pruebas de observabilidad se comparó la latencia promedio reportada por Prometheus y visualizada en Grafana para los diferentes servicios.
+
+En la verificación realizada, `gestion-empleados` presentó el valor promedio más alto entre los microservicios observados, con aproximadamente:
+
+```text
+0.019651 s
+```
+
+es decir, cerca de:
+
+```text
+19.65 ms
+```
+
+El API Gateway presentó un valor muy cercano, alrededor de `0.01963 s`.
+
+La identificación se realizó principalmente mediante el panel de **latencia promedio por servicio** del dashboard de Grafana. Posteriormente, Zipkin permitió complementar el análisis observando los spans y el recorrido de las solicitudes distribuidas.
+
+Por lo tanto, ante la pregunta:
+
+> ¿Qué servicio del ecosistema tardó más en responder y cómo lo identificaron?
+
+la respuesta obtenida durante la prueba fue `gestion-empleados`. Se identificó comparando las métricas de latencia en Prometheus/Grafana y utilizando Zipkin para analizar el detalle de las operaciones distribuidas.
+
+Estos valores corresponden al momento de la prueba y pueden variar dependiendo de la carga, el número de solicitudes, el estado de las bases de datos y los recursos disponibles en el entorno.
+
+
+### Resumen del stack
+
+| Área | Herramienta |
+|---|---|
+| Métricas | Prometheus |
+| Visualización | Grafana |
+| Logs | Promtail + Loki |
+| Instrumentación | OpenTelemetry |
+| Recolección de trazas | OpenTelemetry Collector |
+| Visualización de trazas | Zipkin |
+| Alertas | Grafana Alerting |
+| Notificaciones | Gmail SMTP |
+| Broker monitoreado | RabbitMQ Prometheus Plugin |
+| Health checks | `/health` por microservicio |
+| Provisioning de Grafana | Datasources, dashboard, alertas y contact point versionados |
+## Chaos Testing
+
+Con el objetivo de validar el comportamiento del sistema ante fallos controlados, se realizaron diferentes pruebas de caos sobre componentes críticos de la arquitectura. Estas pruebas permitieron comprobar que la plataforma de observabilidad detecta correctamente indisponibilidades, errores de comunicación y fallos en dependencias.
+
+### 1. Caída del microservicio `gestion-departamentos`
+
+Para comprobar la detección de indisponibilidad de un microservicio, se detuvo de forma intencional el contenedor de `gestion-departamentos`.
+
+![img.png](img.png)
+
+```bash
+docker stop gestion-departamentos
+```
+![img_1.png](img_1.png)
+
+Antes de realizar la prueba, el servicio se encontraba disponible y Prometheus reportaba:
+
+```promql
+up{job="gestion-departamentos"}
+```
+
+con un valor igual a:
+
+```text
+1
+```
+
+Después de detener el contenedor, Prometheus detectó la caída y la métrica cambió a:
+
+```text
+0
+```
+
+La consulta realizada directamente sobre Prometheus confirmó la indisponibilidad:
+
+```bash
+curl -s 'http://localhost:9091/api/v1/query?query=up%7Bjob%3D%22gestion-departamentos%22%7D'
+```
+
+Grafana detectó el cambio de estado mediante la regla de alerta configurada con la condición:
+
+```text
+up < 1
+```
+
+La alerta pasó primero al estado `Pending` y posteriormente a `Firing`, indicando que el servicio permanecía fuera de línea.
+
+![img_2.png](img_2.png)
+
+Además, el contact point configurado mediante Gmail envió correctamente una notificación por correo electrónico informando la caída del servicio.
+
+![img_3.png](img_3.png)
+
+El servicio fue recuperado mediante:
+
+```bash
+docker start gestion-departamentos
+```
+
+Después de su recuperación, Prometheus volvió a registrar:
+
+```text
+up = 1
+```
+
+y la alerta regresó al estado normal.
+
+**Resultado:** el sistema de monitoreo detectó correctamente la caída del microservicio, generó una alerta y notificó al responsable mediante correo electrónico.
+
+---
+
+### 2. Caída de RabbitMQ
+
+El segundo escenario consistió en comprobar qué ocurre cuando el broker de mensajería RabbitMQ deja de estar disponible.
+
+RabbitMQ fue incorporado previamente como target de Prometheus mediante su endpoint de métricas en el puerto `15692`.
+
+![img_4.png](img_4.png)
+
+En condiciones normales, Prometheus registraba:
+
+```promql
+up{job="rabbitmq"}
+```
+
+con valor:
+
+```text
+1
+```
+
+Para provocar el fallo se ejecutó:
+
+```bash
+docker stop rabbitmq
+```
+Después del siguiente ciclo de scraping, Prometheus detectó correctamente la caída del broker y la métrica pasó a:
+
+```text
+0
+```
+![img_6.png](img_6.png)
+
+Con RabbitMQ detenido, se realizó la creación de un empleado mediante el endpoint correspondiente de `gestion-empleados`.
+
+![img_7.png](img_7.png)
+
+El servicio logró persistir correctamente la información del empleado en PostgreSQL, pero al intentar publicar el evento `empleado.creado` se produjo un error de conexión con RabbitMQ.
+
+![img_8.png](img_8.png)
+
+Los logs centralizados en Loki permitieron observar mensajes como:
+
+```text
+Attempting to connect to: [rabbitmq:5672]
+```
+
+y posteriormente:
+
+```text
+La operación de empleado ya fue persistida, pero no fue posible publicar empleado.creado
+```
+
+Esto confirmó el comportamiento diseñado para el servicio: la operación de base de datos no se revierte cuando falla la publicación del evento, y el error queda registrado para su análisis.
+
+Finalmente, RabbitMQ fue recuperado con:
+
+```bash
+docker start rabbitmq
+```
+
+y Prometheus volvió a registrar:
+
+```text
+up = 1
+```
+
+**Resultado:** la caída del broker fue detectada por Prometheus y el fallo de publicación pudo observarse mediante los logs centralizados en Loki. La persistencia principal de `gestion-empleados` se mantuvo disponible a pesar de la indisponibilidad temporal del broker.
+
+---
+
+### 3. Caída de la base de datos de `auth-service`
+
+El tercer escenario tuvo como objetivo comprobar que los health checks detectan correctamente la pérdida de una dependencia crítica.
+
+Se utilizó la base de datos PostgreSQL correspondiente a `auth-service`, cuyo contenedor es:
+
+```text
+database-auth
+```
+
+En condiciones normales, el endpoint interno de salud respondía correctamente:
+
+```bash
+docker exec auth-service curl -i http://localhost:8086/health
+```
+![img_9.png](img_9.png)
+
+con:
+
+```text
+HTTP/1.1 200 OK
+```
+
+y un cuerpo equivalente a:
+
+```json
+{
+  "status": "UP",
+  "checks": {
+    "database": "UP"
+  }
+}
+```
+
+Para simular el fallo se detuvo únicamente la base de datos:
+
+```bash
+docker stop database-auth
+```
+
+Posteriormente se volvió a consultar el health check:
+
+```bash
+docker exec auth-service curl -i http://localhost:8086/health
+```
+![img_10.png](img_10.png)
+
+El servicio respondió:
+
+```text
+HTTP/1.1 503 Service Unavailable
+```
+
+con el siguiente estado:
+
+```json
+{
+  "status": "DOWN",
+  "checks": {
+    "database": "DOWN"
+  }
+}
+```
+
+Esto demuestra que `auth-service` continúa ejecutándose, pero informa correctamente que no se encuentra saludable debido a la pérdida de su base de datos.
+
+Finalmente, la base de datos fue recuperada mediante:
+
+```bash
+docker start database-auth
+```
+
+Después de su recuperación, el endpoint `/health` volvió a responder con código HTTP `200` y estado `UP`.
+
+**Resultado:** el health check detectó correctamente la indisponibilidad de PostgreSQL y devolvió `503 Service Unavailable`, permitiendo diferenciar entre un servicio completamente detenido y un servicio activo con una dependencia crítica fuera de línea.
+
+---
+
+### Conclusiones de las pruebas de caos
+
+Las pruebas realizadas permitieron validar distintos tipos de fallos dentro de la arquitectura:
+
+| Escenario | Detección | Evidencia |
+|---|---|---|
+| Caída de `gestion-departamentos` | Prometheus y Grafana | `up = 0`, alerta `Firing` y correo electrónico |
+| Caída de RabbitMQ | Prometheus y Loki | `up = 0` y error de publicación de eventos |
+| Caída de `database-auth` | Health check | HTTP `503` y estado de base de datos `DOWN` |
+
+Estos escenarios demuestran que la solución de observabilidad permite identificar problemas tanto a nivel de microservicios como de infraestructura y dependencias, utilizando métricas, logs, health checks y alertas para facilitar el diagnóstico y la recuperación del sistema.

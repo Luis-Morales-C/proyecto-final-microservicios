@@ -190,6 +190,13 @@ services:
       DB_NAME: ${DEPARTAMENTOS_DB}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
+      OTEL_SERVICE_NAME: gestion-departamentos
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
     healthcheck:
       test:
         [
@@ -225,6 +232,13 @@ services:
       RABBITMQ_PORT: "5672"
       RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      OTEL_SERVICE_NAME: gestion-empleados
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
       # Logs: oculta el SQL de Hibernate
       SPRING_JPA_SHOW_SQL: "false"
     depends_on:
@@ -263,6 +277,7 @@ services:
       ADMIN_EMPLEADO_ID: ${ADMIN_EMPLEADO_ID:-admin}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
       # Logs: oculta peticiones HTTP y healthchecks de ASP.NET
       Logging__LogLevel__Microsoft.AspNetCore: Warning
     expose:
@@ -298,6 +313,14 @@ services:
       RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       APP_RESET_URL: ${APP_RESET_URL:-https://app.empresa.com/reset}
+      OTEL_SERVICE_NAME: notificaciones-service
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      NODE_OPTIONS: --require @opentelemetry/auto-instrumentations-node/register
     expose:
       - "8083"
     healthcheck:
@@ -331,6 +354,10 @@ services:
       RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       RABBITMQ_QUEUE: perfiles.empleados
+      OTEL_SERVICE_NAME: perfiles-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
     expose:
       - "8084"
     healthcheck:
@@ -364,6 +391,7 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       VACACIONES_SCHEDULER_INTERVALO_SEGUNDOS: ${VACACIONES_SCHEDULER_INTERVALO_SEGUNDOS:-60}
       ENABLE_DEV_ENDPOINTS: ${ENABLE_DEV_ENDPOINTS:-false}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
       # Logs: oculta peticiones HTTP y healthchecks de ASP.NET
       Logging__LogLevel__Microsoft.AspNetCore: Warning
     expose:
@@ -397,6 +425,14 @@ services:
       AUTH_URL: http://auth-service:8086
       JWT_SECRET: ${JWT_SECRET}
       JWT_ISSUER: ${JWT_ISSUER:-auth-service}
+      OTEL_SERVICE_NAME: api-gateway
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_PROPAGATORS: tracecontext,baggage
+
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
     depends_on:
       gestion-empleados:
         condition: service_started
@@ -413,6 +449,95 @@ services:
     networks:
       - microservices-network
 
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: [ "--config=/etc/otelcol-contrib/config.yaml" ]
+    volumes:
+      - ./observabilidad/trazas/otel-collector-config.yml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4318:4318"
+    depends_on:
+      - zipkin
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./observabilidad/monitoreo/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PWD}
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: "smtp.gmail.com:587"
+      GF_SMTP_USER: ${GRAFANA_SMTP_USER}
+      GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD}
+      GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_USER}
+      GF_SMTP_FROM_NAME: "Grafana Observabilidad"
+      GF_SMTP_SKIP_VERIFY: "false"
+      GF_SMTP_STARTTLS_POLICY: "MandatoryStartTLS"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observabilidad/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observabilidad/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+
+  loki:
+    image: grafana/loki:3.6.19
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observabilidad/logs/loki-config.yml:/etc/loki/local-config.yml:ro
+      - loki-data:/loki
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.6.11
+    container_name: promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./observabilidad/logs/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+
 volumes:
   empleados-db-data:
   departamentos-db-data:
@@ -421,6 +546,8 @@ volumes:
   vacaciones-db-data:
   auth-db-data:
   rabbitmq-data:
+  grafana-data:
+  loki-data:
 
 networks:
   microservices-network:

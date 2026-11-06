@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using RabbitMQ.Client;
 
@@ -48,6 +50,19 @@ public sealed class EventPublisher(
             props.ContentType = "application/json";
             props.MessageId = id;
             props.Type = type;
+
+            props.Headers ??= new Dictionary<string, object>();
+
+            var activity = Activity.Current;
+
+            if (activity is not null)
+            {
+                var traceParent =
+                    $"00-{activity.TraceId}-{activity.SpanId}-{(activity.ActivityTraceFlags.HasFlag(ActivityTraceFlags.Recorded) ? "01" : "00")}";
+
+                props.Headers["traceparent"] =
+                    Encoding.UTF8.GetBytes(traceParent);
+            }
 
             channel.BasicPublish(
                 exchange: Exchange,

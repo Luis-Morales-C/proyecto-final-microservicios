@@ -1,0 +1,12 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: observabilidad-gmail-provisionado
+    receivers:
+      - uid: cp-observabilidad-provisionado
+        type: email
+        settings:
+          addresses: $GF_SMTP_USER
+          singleEmail: false
+        disableResolveMessage: false
