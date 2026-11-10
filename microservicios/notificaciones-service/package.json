@@ -4,7 +4,11 @@
   "description": "Microservicio de notificaciones del sistema RRHH",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "test": "node --test test/notificaciones.test.js",
+    "test:coverage": "node test/run-coverage.js",
+    "test:junit": "node test/run-junit.js",
+    "test:ci": "node test/run-coverage.js && node test/run-junit.js"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.10.0",

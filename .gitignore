@@ -49,3 +49,6 @@ cucumber*.html
 .venv/
 docker-logs.txt
 .env.infra
+
+# Go coverage
+coverage.out

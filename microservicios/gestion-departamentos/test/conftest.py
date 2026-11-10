@@ -1,3 +1,6 @@
+import os
+os.environ.setdefault("SKIP_DB_INIT", "1")
+
 import pytest
 
 from fastapi.testclient import TestClient

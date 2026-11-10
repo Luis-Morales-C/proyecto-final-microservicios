@@ -19,4 +19,7 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.19.1" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Process" Version="1.19.0-rc.1" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+  </ItemGroup>
 </Project>
