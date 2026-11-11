@@ -24,12 +24,12 @@ credentials:
 
 unclassified:
   location:
-    url: "${JENKINS_URL:-http://localhost:9090/}"
+    url: "${JENKINS_URL}"
   sonarGlobalConfiguration:
     buildWrapperEnabled: true
     installations:
       - name: "sonarqube"
-        serverUrl: "${SONAR_HOST_URL:-http://localhost:9000}"
+        serverUrl: "${SONAR_HOST_URL}"
         credentialsId: "sonar-token"
 
 jobs:

@@ -17,13 +17,12 @@ services:
     environment:
       JAVA_OPTS: "-Djenkins.install.runSetupWizard=false -Dhudson.model.DirectoryBrowserSupport.CSP="
       CASC_JENKINS_CONFIG: /var/jenkins_home/casc_configs
-      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-admin123}
-      JENKINS_URL: ${JENKINS_URL:-http://localhost:9090/}
-      SONAR_HOST_URL: ${SONAR_HOST_URL:-http://localhost:9000}
-      SONAR_INTERNAL_URL: ${SONAR_INTERNAL_URL:-http://sonarqube:9000}
-      SONAR_TOKEN: ${SONAR_TOKEN:-pendiente}
-      REPO_URL: ${REPO_URL:?defina REPO_URL en .env.infra}
-      REPO_BRANCH: ${REPO_BRANCH:-main}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
+      JENKINS_URL: ${JENKINS_URL}
+      SONAR_HOST_URL: ${SONAR_HOST_URL}
+      SONAR_TOKEN: ${SONAR_TOKEN}
+      REPO_URL: ${REPO_URL}
+      REPO_BRANCH: ${REPO_BRANCH}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
