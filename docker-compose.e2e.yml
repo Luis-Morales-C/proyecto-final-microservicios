@@ -73,3 +73,18 @@ services:
   otel-collector:
     profiles:
       - observability-full
+
+  # Deshabilitar prometheus en E2E: mismo problema de archivo de config
+  prometheus:
+    profiles:
+      - observability-full
+
+  # Deshabilitar grafana en E2E: depende de prometheus
+  grafana:
+    profiles:
+      - observability-full
+
+  # Deshabilitar loki en E2E: parte del stack de observabilidad
+  loki:
+    profiles:
+      - observability-full
