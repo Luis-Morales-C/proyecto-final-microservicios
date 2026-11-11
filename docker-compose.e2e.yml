@@ -88,3 +88,13 @@ services:
   loki:
     profiles:
       - observability-full
+
+  # Ajustar healthcheck de notificaciones-service en E2E (más tiempo para arrancar en CI)
+  notificaciones-service:
+    container_name: null
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8083/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
