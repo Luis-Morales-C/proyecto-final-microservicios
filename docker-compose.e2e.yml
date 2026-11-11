@@ -68,3 +68,8 @@ services:
   promtail:
     profiles:
       - observability-full
+
+  # Deshabilitar otel-collector en E2E: mismo problema de archivo de config
+  otel-collector:
+    profiles:
+      - observability-full

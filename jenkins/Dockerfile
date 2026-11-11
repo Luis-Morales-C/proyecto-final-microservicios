@@ -55,3 +55,6 @@ RUN mkdir -p /root/.testcontainers \
  && echo "ryuk.disabled=true" >> /root/.testcontainers/.testcontainers.properties \
  && echo "docker.client.strategy=org.testcontainers.dockerclient.UnixSocketClientProviderStrategy" >> /root/.testcontainers/.testcontainers.properties \
  && chmod 644 /root/.testcontainers/.testcontainers.properties
+
+# Copiar script de inicialización para configurar URL pública de SonarQube
+COPY init-sonarqube-public-url.groovy /usr/share/jenkins/ref/init.groovy.d/
