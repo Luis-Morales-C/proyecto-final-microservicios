@@ -149,13 +149,15 @@ async function iniciarAplicacion() {
     try {
         await inicializarBaseDeDatos();
 
-        await iniciarConsumidor();
-
+        // Iniciar el servidor Express PRIMERO para que el healthcheck responda
         app.listen(PORT, "0.0.0.0", () => {
             console.log(
                 `Notificaciones iniciado en el puerto ${PORT}`
             );
         });
+
+        // Luego conectar a RabbitMQ (puede tardar más)
+        await iniciarConsumidor();
     } catch (error) {
         console.error(
             "No fue posible iniciar Notificaciones:",
