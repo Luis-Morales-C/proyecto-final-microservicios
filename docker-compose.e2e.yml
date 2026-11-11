@@ -62,3 +62,9 @@ services:
       timeout: 10s
       retries: 50
       start_period: 90s
+
+  # Deshabilitar promtail en E2E: el archivo de config no está disponible en el workspace de Jenkins
+  # y no es crítico para los tests funcionales
+  promtail:
+    profiles:
+      - observability-full
