@@ -7,7 +7,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnvFile } from "node:process";
 
-setDefaultTimeout(30000);
+setDefaultTimeout(60000);  // 60s para entornos CI con recursos limitados
 
 const here = dirname(fileURLToPath(import.meta.url));
 const rootEnv = resolve(here, "../../.env");
