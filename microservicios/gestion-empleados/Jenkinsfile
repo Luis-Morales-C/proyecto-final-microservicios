@@ -67,9 +67,7 @@ pipeline {
                         sh '''
                             mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
                               -Dsonar.projectKey=gestion-empleados \
-                              -Dsonar.projectName=gestion-empleados \
-                              -Dsonar.host.url="$SONAR_HOST_URL" \
-                              -Dsonar.token="$SONAR_AUTH_TOKEN"
+                              -Dsonar.projectName=gestion-empleados
                         '''
                     }
                 }
@@ -99,12 +97,12 @@ pipeline {
 
         stage('Publish') {
             steps {
-                // El push lo hace el daemon del host: localhost:5000 es el registry publicado
+                // El push lo hace el daemon del host: localhost:5001 es el registry publicado
                 sh '''
-                    docker tag "$IMAGE:$IMAGE_TAG" "localhost:5000/$IMAGE:$IMAGE_TAG"
-                    docker tag "$IMAGE:latest"     "localhost:5000/$IMAGE:latest"
-                    docker push "localhost:5000/$IMAGE:$IMAGE_TAG"
-                    docker push "localhost:5000/$IMAGE:latest"
+                    docker tag "$IMAGE:$IMAGE_TAG" "localhost:5001/$IMAGE:$IMAGE_TAG"
+                    docker tag "$IMAGE:latest"     "localhost:5001/$IMAGE:latest"
+                    docker push "localhost:5001/$IMAGE:$IMAGE_TAG"
+                    docker push "localhost:5001/$IMAGE:latest"
                 '''
             }
         }

@@ -29,7 +29,7 @@ unclassified:
     buildWrapperEnabled: true
     installations:
       - name: "sonarqube"
-        serverUrl: "${SONAR_HOST_URL}"
+        serverUrl: "${SONAR_INTERNAL_URL}"
         credentialsId: "sonar-token"
 
 jobs:

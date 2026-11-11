@@ -76,8 +76,8 @@ pipeline {
                     dir(env.SVC_DIR) {
                         sh '''
                             sonar-scanner \
-                              -Dsonar.host.url="$SONAR_HOST_URL" \
-                              -Dsonar.token="$SONAR_AUTH_TOKEN"
+                              -Dsonar.projectKey=gestion-departamentos \
+                              -Dsonar.projectName=gestion-departamentos
                         '''
                     }
                 }
@@ -108,10 +108,10 @@ pipeline {
         stage('Publish') {
             steps {
                 sh '''
-                    docker tag "$IMAGE:$IMAGE_TAG" "localhost:5000/$IMAGE:$IMAGE_TAG"
-                    docker tag "$IMAGE:latest"     "localhost:5000/$IMAGE:latest"
-                    docker push "localhost:5000/$IMAGE:$IMAGE_TAG"
-                    docker push "localhost:5000/$IMAGE:latest"
+                    docker tag "$IMAGE:$IMAGE_TAG" "localhost:5001/$IMAGE:$IMAGE_TAG"
+                    docker tag "$IMAGE:latest"     "localhost:5001/$IMAGE:latest"
+                    docker push "localhost:5001/$IMAGE:$IMAGE_TAG"
+                    docker push "localhost:5001/$IMAGE:latest"
                 '''
             }
         }
